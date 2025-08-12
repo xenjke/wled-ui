@@ -1,197 +1,50 @@
-import React, { useState } from "react";
-import { X, Plus, AlertCircle } from "lucide-react";
+import { useState } from "react";
 import { Modal } from "./ui/Modal";
 import { Button } from "./ui/Button";
-import { WLEDBoard } from "../types/wled";
 
-interface AddBoardModalProps {
+type AddBoardModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (board: WLEDBoard) => void;
-}
+  onAddBoard: (ip: string) => void;
+};
 
-export const AddBoardModal: React.FC<AddBoardModalProps> = ({
+export const AddBoardModal = ({
   isOpen,
   onClose,
-  onAdd,
-}) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    ip: "",
-    port: "80",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (!formData.ip.trim()) {
-      newErrors.ip = "IP address is required";
-    } else {
-      const ipRegex =
-        /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-      if (!ipRegex.test(formData.ip)) {
-        newErrors.ip = "Invalid IP address format";
-      }
-    }
-
-    if (formData.port) {
-      const port = parseInt(formData.port);
-      if (isNaN(port) || port < 1 || port > 65535) {
-        newErrors.port = "Port must be between 1 and 65535";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  onAddBoard,
+}: AddBoardModalProps) => {
+  const [ip, setIp] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (validateForm()) {
-      const board: WLEDBoard = {
-        id: `manual-${Date.now()}`,
-        name: formData.name.trim(),
-        ip: formData.ip.trim(),
-        port: formData.port ? parseInt(formData.port) : 80,
-        lastSeen: new Date(),
-        isOnline: false,
-        syncEmit: false,
-        syncReceive: false,
-      };
-
-      onAdd(board);
-      handleClose();
+    if (ip.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
+      onAddBoard(ip);
+      setIp("");
+    } else {
+      alert("Please enter a valid IP address.");
     }
   };
 
-  const handleClose = () => {
-    setFormData({ name: "", ip: "", port: "80" });
-    setErrors({});
-    onClose();
-  };
-
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Add WLED Board</h3>
-        <button
-          onClick={handleClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <X size={20} />
-        </button>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="p-6 bg-gray-800 rounded-lg">
+        <h3 className="text-lg font-semibold mb-4">Add WLED Device by IP</h3>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={ip}
+            onChange={(e) => setIp(e.target.value)}
+            className="w-full p-2 rounded-md bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
+            placeholder="e.g., 192.168.1.123"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" onClick={onClose} variant="secondary">
+              Cancel
+            </Button>
+            <Button type="submit">Add Device</Button>
+          </div>
+        </form>
       </div>
-
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
-        {/* Name Field */}
-        <div>
-          <label
-            htmlFor="boardName"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Board Name *
-          </label>
-          <input
-            type="text"
-            id="boardName"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.name ? "border-red-300" : "border-gray-300"
-            }`}
-            placeholder="e.g., Living Room LEDs"
-          />
-          {errors.name && (
-            <div className="flex items-center mt-1 text-sm text-red-600">
-              <AlertCircle size={14} className="mr-1" />
-              {errors.name}
-            </div>
-          )}
-        </div>
-
-        {/* IP Address Field */}
-        <div>
-          <label
-            htmlFor="boardIp"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            IP Address *
-          </label>
-          <input
-            type="text"
-            id="boardIp"
-            value={formData.ip}
-            onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.ip ? "border-red-300" : "border-gray-300"
-            }`}
-            placeholder="192.168.1.100"
-          />
-          {errors.ip && (
-            <div className="flex items-center mt-1 text-sm text-red-600">
-              <AlertCircle size={14} className="mr-1" />
-              {errors.ip}
-            </div>
-          )}
-        </div>
-
-        {/* Port Field */}
-        <div>
-          <label
-            htmlFor="boardPort"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Port (optional)
-          </label>
-          <input
-            type="text"
-            id="boardPort"
-            value={formData.port}
-            onChange={(e) => setFormData({ ...formData, port: e.target.value })}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.port ? "border-red-300" : "border-gray-300"
-            }`}
-            placeholder="80"
-          />
-          {errors.port && (
-            <div className="flex items-center mt-1 text-sm text-red-600">
-              <AlertCircle size={14} className="mr-1" />
-              {errors.port}
-            </div>
-          )}
-          <p className="mt-1 text-xs text-gray-500">
-            Leave empty for default port 80
-          </p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end space-x-3 pt-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleClose}
-            className="px-4 py-2"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            className="px-4 py-2 flex items-center space-x-2"
-          >
-            <Plus size={16} />
-            <span>Add Board</span>
-          </Button>
-        </div>
-      </form>
     </Modal>
   );
 };

@@ -1,184 +1,138 @@
-import React, { useState } from "react";
-import { Search, Plus, RefreshCw, Wifi } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useWLEDBoards } from "../hooks/useWLEDBoards";
 import { Button } from "./ui/Button";
+import { Card } from "./ui/Card";
+import { loadJSON, saveJSON } from "../utils/storage";
+import { LOCAL_STORAGE_KEYS } from "../constants";
+import { RefreshCw, Wifi } from "lucide-react";
 
-interface NetworkDiscoveryProps {
-  onDiscover: (networkRange?: string) => void;
-  onTestIP: (ip: string) => void;
-  onAddManual: () => void;
-  loading: boolean;
-  lastRefresh: Date | null;
-  boardCount: number;
-}
+const NetworkRangeInput = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) => (
+  <div className="flex items-center gap-2">
+    <label htmlFor="network-range" className="text-sm font-medium">
+      Network Base IP:
+    </label>
+    <input
+      id="network-range"
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="p-2 border rounded-md bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
+      placeholder="e.g., 192.168.1."
+      pattern="^(\d{1,3}\.){3}$"
+      title="Enter the first three octets of an IP, e.g. '192.168.1.'"
+      disabled={disabled}
+    />
+  </div>
+);
 
-export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
-  onDiscover,
-  onTestIP,
-  onAddManual,
-  loading,
-  lastRefresh,
-  boardCount,
-}) => {
-  const [networkRange, setNetworkRange] = useState(() => {
-    const saved = localStorage.getItem("wled-network-range");
-    return saved || "192.168.4";
-  });
-  const [testIP, setTestIP] = useState(() => {
-    const saved = localStorage.getItem("wled-test-ip");
-    return saved || "";
-  });
-  const [testingIP, setTestingIP] = useState(false);
+const ScanStats = ({
+  checked,
+  total,
+  found,
+}: {
+  checked: number;
+  total: number;
+  found: number;
+}) => (
+  <p className="text-sm text-gray-400">
+    Scanned: {checked} / {total} | Found: {found}
+  </p>
+);
 
-  const handleDiscover = () => {
-    localStorage.setItem("wled-network-range", networkRange);
-    onDiscover(networkRange);
-  };
+export const NetworkDiscovery = () => {
+  const { discoverBoards } = useWLEDBoards();
+  const [networkRange, setNetworkRange] = useState(() =>
+    loadJSON(LOCAL_STORAGE_KEYS.networkRange, "192.168.1.")
+  );
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState({ checked: 0, found: 0 });
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
 
-  const handleTestIP = async () => {
-    if (!testIP.trim()) return;
+  useEffect(() => {
+    saveJSON(LOCAL_STORAGE_KEYS.networkRange, networkRange);
+  }, [networkRange]);
 
-    localStorage.setItem("wled-test-ip", testIP.trim());
-    setTestingIP(true);
+  const handleDiscovery = useCallback(async () => {
+    setIsScanning(true);
+    setScanProgress({ checked: 0, found: 0 });
+    const controller = new AbortController();
+    setAbortController(controller);
+
     try {
-      await onTestIP(testIP.trim());
+      await discoverBoards(
+        networkRange,
+        (progress) => setScanProgress(progress),
+        controller.signal
+      );
+    } catch (error) {
+      console.error("Discovery failed:", error);
     } finally {
-      setTestingIP(false);
+      setIsScanning(false);
+      setAbortController(null);
+    }
+  }, [discoverBoards, networkRange]);
+
+  const cancelDiscovery = () => {
+    if (abortController) {
+      abortController.abort();
     }
   };
 
-  const handleNetworkRangeChange = (value: string) => {
-    setNetworkRange(value);
-    localStorage.setItem("wled-network-range", value);
-  };
-
-  const handleTestIPChange = (value: string) => {
-    setTestIP(value);
-    localStorage.setItem("wled-test-ip", value);
-  };
-
-  const formatLastRefresh = () => {
-    if (!lastRefresh) return "Never";
-    const now = new Date();
-    const diff = now.getTime() - lastRefresh.getTime();
-    const minutes = Math.floor(diff / 60000);
-
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ${minutes % 60}m ago`;
-  };
-
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
-          <Wifi size={24} className="text-blue-600" />
-        </div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-          Device Scanner
-        </h2>
-        <p className="text-gray-600">
-          Discover and manage WLED devices on your network
-        </p>
-        <div className="inline-flex items-center space-x-2 text-sm bg-gray-50 px-4 py-2 rounded-full mt-4">
-          <Wifi size={14} className="text-gray-500" />
-          <span className="font-medium text-gray-700">
-            {boardCount} device{boardCount !== 1 ? "s" : ""} found
-          </span>
-        </div>
-      </div>
-
-      {/* Network Range Input */}
-      <div className="max-w-md mx-auto mb-6">
-        <label
-          htmlFor="networkRange"
-          className="block text-sm font-medium text-gray-700 mb-3 text-center"
-        >
-          Network Range
-        </label>
-        <input
-          type="text"
-          id="networkRange"
-          value={networkRange}
-          onChange={(e) => handleNetworkRangeChange(e.target.value)}
-          placeholder="192.168.4"
-          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-center font-mono"
-        />
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto mb-8">
-        <Button
-          onClick={handleDiscover}
-          disabled={loading}
-          variant="primary"
-          className="flex-1 flex items-center justify-center space-x-2"
-        >
-          {loading ? (
-            <RefreshCw size={18} className="animate-spin" />
-          ) : (
-            <Search size={18} />
-          )}
-          <span>{loading ? "Scanning..." : "Scan Network"}</span>
-        </Button>
-        <Button
-          onClick={onAddManual}
-          variant="secondary"
-          className="flex-1 flex items-center justify-center space-x-2"
-        >
-          <Plus size={18} />
-          <span>Add Device</span>
-        </Button>
-      </div>
-
-      {/* Test Specific IP */}
-      <div className="max-w-md mx-auto">
-        <label
-          htmlFor="testIP"
-          className="block text-sm font-medium text-gray-700 mb-3 text-center"
-        >
-          Test Specific IP Address
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            id="testIP"
-            value={testIP}
-            onChange={(e) => handleTestIPChange(e.target.value)}
-            placeholder="192.168.4.253"
-            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 font-mono"
+    <Card className="mt-4">
+      <div className="p-4">
+        <h3 className="text-lg font-semibold mb-2">Discover Devices</h3>
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <NetworkRangeInput
+            value={networkRange}
+            onChange={setNetworkRange}
+            disabled={isScanning}
           />
-          <Button
-            onClick={handleTestIP}
-            disabled={!testIP.trim() || testingIP}
-            variant="primary"
-            className="min-w-[100px] flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 focus:ring-green-500"
-          >
-            {testingIP ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Search size={16} />
-            )}
-            <span className="hidden sm:inline">
-              {testingIP ? "Testing..." : "Test"}
-            </span>
-          </Button>
+          <div className="flex-grow" />
+          {isScanning ? (
+            <Button onClick={cancelDiscovery} variant="danger">
+              Cancel Scan
+            </Button>
+          ) : (
+            <Button
+              onClick={handleDiscovery}
+              disabled={!networkRange.match(/^(\d{1,3}\.){3}$/)}
+              variant="primary"
+              className="flex-1 flex items-center justify-center space-x-2"
+            >
+              {isScanning ? (
+                <RefreshCw size={18} className="animate-spin" />
+              ) : (
+                <Wifi size={18} />
+              )}
+              <span>{isScanning ? "Scanning..." : "Scan Network"}</span>
+            </Button>
+          )}
         </div>
-        <p className="mt-3 text-xs text-gray-500 text-center">
-          Enter a specific IP address to test if it's a WLED device
-        </p>
+        {isScanning && (
+          <div className="mt-4">
+            <progress
+              className="w-full [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-value]:rounded-lg   [&::-webkit-progress-bar]:bg-slate-700 [&::-webkit-progress-value]:bg-blue-600 [&::-moz-progress-bar]:bg-blue-600"
+              max="254"
+              value={scanProgress.checked}
+            />
+            <ScanStats
+              checked={scanProgress.checked}
+              total={254}
+              found={scanProgress.found}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Status Footer */}
-      <div className="border-t border-gray-100 pt-6 mt-6">
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <span className="font-medium">Last scan: {formatLastRefresh()}</span>
-          <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">
-            Range: {networkRange}.1 - {networkRange}.254
-          </span>
-        </div>
-      </div>
-    </div>
+    </Card>
   );
 };

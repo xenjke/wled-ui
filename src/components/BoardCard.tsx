@@ -1,54 +1,37 @@
-import React, { useState } from "react";
+import React from "react";
 import { WLEDBoard } from "../types/wled";
+import { Card } from "./ui/Card";
 import { BoardHeader } from "./board/BoardHeader";
 import { BoardControls } from "./board/BoardControls";
 import { BoardDetails } from "./board/BoardDetails";
-import { Card } from "./ui/Card";
+import { useWLEDBoards } from "../hooks/useWLEDBoards";
 
-interface BoardCardProps {
+type BoardCardProps = {
   board: WLEDBoard;
-  onToggle: (boardId: string, on: boolean) => void;
-  onBrightnessChange: (boardId: string, brightness: number) => void;
-  onRefresh: (boardId: string) => void;
-  onToggleSync: (
-    boardId: string,
-    type: "emit" | "receive",
-    enabled: boolean
-  ) => void;
-}
+};
 
-export const BoardCard: React.FC<BoardCardProps> = ({
-  board,
-  onToggle,
-  onBrightnessChange,
-  onRefresh,
-  onToggleSync,
-}) => {
-  const [showDetails, setShowDetails] = useState(false);
-  const handleToggle = () => onToggle(board.id, !board.state?.on);
-  const handleBrightnessChange = (val: number) =>
-    onBrightnessChange(board.id, val);
+export const BoardCard = ({ board }: BoardCardProps) => {
+  const { removeBoard, togglePower, setBrightness, setSync, refreshAllBoards } =
+    useWLEDBoards();
+
+  if (!board) {
+    return null;
+  }
+
   return (
     <Card>
-      <div className="p-4">
-        <BoardHeader
-          board={board}
-          onRefresh={onRefresh}
-          expanded={showDetails}
-          onToggleExpand={() => setShowDetails(!showDetails)}
-        />
-        <BoardControls
-          board={board}
-          onTogglePower={handleToggle}
-          onToggleSync={(t, e) => onToggleSync(board.id, t, e)}
-        />
-      </div>
-      {showDetails && (
-        <BoardDetails
-          board={board}
-          onBrightnessChange={handleBrightnessChange}
-        />
-      )}
+      <BoardHeader
+        board={board}
+        onRemove={() => removeBoard(board.id)}
+        onRefresh={refreshAllBoards}
+      />
+      <BoardControls
+        board={board}
+        onTogglePower={(on) => togglePower(board.id, on)}
+        onSetBrightness={(bri) => setBrightness(board.id, bri)}
+        onSetSync={(sync, send) => setSync(board.id, sync, send)}
+      />
+      <BoardDetails board={board} />
     </Card>
   );
 };

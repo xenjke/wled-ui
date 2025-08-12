@@ -5,6 +5,7 @@ import React from "react";
 interface BoardHeaderProps {
   board: WLEDBoard;
   onRefresh: (id: string) => void;
+  onRemove: (id: string) => void;
   expanded: boolean;
   onToggleExpand: () => void;
 }
@@ -12,6 +13,7 @@ interface BoardHeaderProps {
 export const BoardHeader: React.FC<BoardHeaderProps> = ({
   board,
   onRefresh,
+  onRemove,
   expanded,
   onToggleExpand,
 }) => {
@@ -41,6 +43,13 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
               title="Refresh"
             >
               <RefreshCw className="h-3 w-3" />
+            </button>
+            <button
+              onClick={() => onRemove(board.id)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="Remove"
+            >
+              ❌
             </button>
           </div>
         </div>

@@ -1,30 +1,22 @@
 import { WLEDBoard } from "../types/wled";
 import { sortBoards } from "../domain/wledBoard";
 
-export interface BoardsState {
-  boards: WLEDBoard[];
-  loading: boolean;
-  error: string | null;
-  lastRefresh: Date | null;
-}
-
 export type BoardsAction =
-  | { type: "LOAD_SAVED"; boards: WLEDBoard[]; lastRefresh: Date | null }
-  | { type: "DISCOVERY_START" }
-  | { type: "DISCOVERY_COMPLETE"; boards: WLEDBoard[] }
-  | { type: "DISCOVERY_ERROR"; error: string }
-  | { type: "REFRESH_START" }
-  | { type: "REFRESH_COMPLETE"; boards: WLEDBoard[]; lastRefresh?: Date }
-  | { type: "BOARD_UPDATE"; board: WLEDBoard }
-  | { type: "ADD_BOARD"; board: WLEDBoard }
-  | { type: "REMOVE_BOARD"; id: string }
-  | { type: "CLEAR_ERROR" };
+  | { type: "LOAD_BOARDS"; payload: WLEDBoard[] }
+  | { type: "ADD_BOARD"; payload: WLEDBoard }
+  | { type: "REMOVE_BOARD"; payload: string } // payload is board id
+  | { type: "UPDATE_BOARD"; payload: Partial<WLEDBoard> & { id: string } }
+  | { type: "SET_ALL_OFFLINE" }
+  | { type: "DISCOVERY_COMPLETE"; payload: WLEDBoard[] };
+
+export type BoardsState = {
+  boards: WLEDBoard[];
+  lastUpdated: number | null;
+};
 
 export const initialBoardsState: BoardsState = {
   boards: [],
-  loading: false,
-  error: null,
-  lastRefresh: null,
+  lastUpdated: null,
 };
 
 export function boardsReducer(
@@ -32,52 +24,95 @@ export function boardsReducer(
   action: BoardsAction
 ): BoardsState {
   switch (action.type) {
-    case "LOAD_SAVED":
+    case "LOAD_BOARDS":
       return {
         ...state,
-        boards: action.boards.sort(sortBoards),
-        lastRefresh: action.lastRefresh,
+        boards: action.payload.sort(sortBoards),
+        lastUpdated: Date.now(),
       };
-    case "DISCOVERY_START":
-      return { ...state, loading: true, error: null };
-    case "DISCOVERY_COMPLETE":
+
+    case "ADD_BOARD": {
+      const existing = state.boards.find((b) => b.id === action.payload.id);
+      if (existing) {
+        // If board already exists, update it
+        return {
+          ...state,
+          boards: state.boards
+            .map((b) =>
+              b.id === action.payload.id ? { ...b, ...action.payload } : b
+            )
+            .sort(sortBoards),
+          lastUpdated: Date.now(),
+        };
+      }
       return {
         ...state,
-        loading: false,
-        boards: action.boards.sort(sortBoards),
-        lastRefresh: new Date(),
+        boards: [...state.boards, action.payload].sort(sortBoards),
+        lastUpdated: Date.now(),
       };
-    case "DISCOVERY_ERROR":
-      return { ...state, loading: false, error: action.error };
-    case "REFRESH_START":
-      return { ...state, loading: true };
-    case "REFRESH_COMPLETE":
-      return {
-        ...state,
-        loading: false,
-        boards: action.boards.sort(sortBoards),
-        lastRefresh: action.lastRefresh || state.lastRefresh,
-      };
-    case "BOARD_UPDATE":
-      return {
-        ...state,
-        boards: state.boards
-          .map((b) => (b.id === action.board.id ? action.board : b))
-          .sort(sortBoards),
-      };
-    case "ADD_BOARD":
-      if (state.boards.some((b) => b.id === action.board.id)) return state;
-      return {
-        ...state,
-        boards: [...state.boards, action.board].sort(sortBoards),
-      };
+    }
+
     case "REMOVE_BOARD":
       return {
         ...state,
-        boards: state.boards.filter((b) => b.id !== action.id),
+        boards: state.boards.filter((b) => b.id !== action.payload),
+        lastUpdated: Date.now(),
       };
-    case "CLEAR_ERROR":
-      return { ...state, error: null };
+
+    case "UPDATE_BOARD":
+      return {
+        ...state,
+        boards: state.boards
+          .map((b) =>
+            b.id === action.payload.id
+              ? { ...b, ...action.payload, lastSeen: new Date() }
+              : b
+          )
+          .sort(sortBoards),
+        lastUpdated: Date.now(),
+      };
+
+    case "SET_ALL_OFFLINE":
+      return {
+        ...state,
+        boards: state.boards.map((b) => ({ ...b, isOnline: false })),
+        lastUpdated: Date.now(),
+      };
+
+    case "DISCOVERY_COMPLETE": {
+      const discoveredBoards = action.payload;
+
+      // Create a map of discovered boards for efficient lookup
+      const discoveredMap = new Map(discoveredBoards.map((b) => [b.id, b]));
+
+      // Update existing boards and mark offline if not found in discovery
+      const updatedBoards = state.boards.map((board) => {
+        const discovered = discoveredMap.get(board.id);
+        if (discovered) {
+          // Board was found, update it and mark as online
+          discoveredMap.delete(board.id); // Remove from map to track new boards
+          return {
+            ...board,
+            ...discovered,
+            isOnline: true,
+            lastSeen: new Date(),
+          };
+        } else {
+          // Board was not found, mark as offline
+          return { ...board, isOnline: false };
+        }
+      });
+
+      // Add any remaining boards from the discovery (new boards)
+      const newBoards = Array.from(discoveredMap.values());
+
+      return {
+        ...state,
+        boards: [...updatedBoards, ...newBoards].sort(sortBoards),
+        lastUpdated: Date.now(),
+      };
+    }
+
     default:
       return state;
   }

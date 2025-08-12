@@ -94,6 +94,11 @@ export interface WLEDBoard {
   syncReceive: boolean;
 }
 
+export interface WLEDStateResponse {
+  state: WLEDState;
+  info: WLEDInfo;
+}
+
 export interface WLEDConfig {
   boards: WLEDBoard[];
   refreshInterval: number;

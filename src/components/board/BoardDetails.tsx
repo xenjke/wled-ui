@@ -5,13 +5,9 @@ import { Slider } from "../ui/Slider";
 
 interface BoardDetailsProps {
   board: WLEDBoard;
-  onBrightnessChange: (value: number) => void;
 }
 
-export const BoardDetails: React.FC<BoardDetailsProps> = ({
-  board,
-  onBrightnessChange,
-}) => {
+export const BoardDetails: React.FC<BoardDetailsProps> = ({ board }) => {
   return (
     <div className="border-t border-gray-100 bg-gray-50 p-5">
       {board.isOnline && board.state?.on && (
@@ -28,7 +24,7 @@ export const BoardDetails: React.FC<BoardDetailsProps> = ({
             min={1}
             max={255}
             value={board.state.bri}
-            onChange={onBrightnessChange}
+            onChange={() => {}}
           />
         </div>
       )}

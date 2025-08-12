@@ -1,53 +1,68 @@
 import React from "react";
-import { Power, Send, Download } from "lucide-react";
-import { IconButton } from "../ui/IconButton";
 import { WLEDBoard } from "../../types/wled";
+import { Slider } from "../ui/Slider";
+import { Button } from "../ui/Button";
 
 interface BoardControlsProps {
   board: WLEDBoard;
-  onTogglePower: () => void;
-  onToggleSync: (type: "emit" | "receive", enabled: boolean) => void;
+  onTogglePower: (isOn: boolean) => void;
+  onSetBrightness: (brightness: number) => void;
+  onSetSync: (sync: boolean, send: boolean) => void;
 }
 
 export const BoardControls: React.FC<BoardControlsProps> = ({
   board,
   onTogglePower,
-  onToggleSync,
+  onSetBrightness,
+  onSetSync,
 }) => {
   if (!board.isOnline) return null;
+
+  const handleBrightnessChange = (value: number) => {
+    onSetBrightness(value);
+  };
+
   return (
-    <div className="flex items-center justify-center space-x-4">
-      <div className="flex flex-col items-center space-y-1">
-        <IconButton
-          onClick={onTogglePower}
-          active={board.state?.on}
-          color="green"
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="font-medium">Power</span>
+        <Button
+          onClick={() => onTogglePower(!board.state?.on)}
+          variant={board.state?.on ? "primary" : "secondary"}
         >
-          <Power className="h-6 w-6" />
-        </IconButton>
-        <span className="text-[10px] font-medium text-gray-600">Power</span>
+          {board.state?.on ? "On" : "Off"}
+        </Button>
       </div>
-      <div className="flex flex-col items-center space-y-1">
-        <IconButton
-          onClick={() => onToggleSync("emit", !board.syncEmit)}
-          active={board.syncEmit}
-          color="orange"
-          title="Send sync"
-        >
-          <Send className="h-5 w-5" />
-        </IconButton>
-        <span className="text-[10px] font-medium text-gray-600">Send</span>
+      <div className="space-y-2">
+        <label htmlFor={`brightness-${board.id}`} className="font-medium">
+          Brightness
+        </label>
+        <Slider
+          id={`brightness-${board.id}`}
+          min={0}
+          max={255}
+          step={1}
+          value={board.state?.bri ?? 0}
+          onChange={handleBrightnessChange}
+          disabled={!board.state?.on}
+        />
       </div>
-      <div className="flex flex-col items-center space-y-1">
-        <IconButton
-          onClick={() => onToggleSync("receive", !board.syncReceive)}
-          active={board.syncReceive}
-          color="cyan"
-          title="Receive sync"
-        >
-          <Download className="h-5 w-5" />
-        </IconButton>
-        <span className="text-[10px] font-medium text-gray-600">Receive</span>
+      <div className="flex items-center justify-between">
+        <span className="font-medium">Sync</span>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => onSetSync(!board.syncReceive, board.syncEmit)}
+            variant={board.syncReceive ? "primary" : "secondary"}
+          >
+            Receive
+          </Button>
+          <Button
+            onClick={() => onSetSync(board.syncReceive, !board.syncEmit)}
+            variant={board.syncEmit ? "primary" : "secondary"}
+          >
+            Send
+          </Button>
+        </div>
       </div>
     </div>
   );
