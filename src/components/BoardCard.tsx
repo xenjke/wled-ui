@@ -33,21 +33,15 @@ export const BoardCard: React.FC<BoardCardProps> = ({
     return isOnline ? 'text-green-500' : 'text-red-500';
   };
 
-  const getSyncStatusColor = (syncEmit: boolean, syncReceive: boolean) => {
-    if (syncEmit && syncReceive) return 'text-blue-500';
-    if (syncEmit || syncReceive) return 'text-yellow-500';
-    return 'text-gray-400';
-  };
-
   return (
-    <div className={`bg-white rounded-lg shadow-md border-l-4 transition-all duration-200 ${
-      board.isOnline ? 'border-green-500' : 'border-red-500'
+    <div className={`bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md ${
+      board.isOnline ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500'
     }`}>
-      {/* Minimal Header - Always Visible */}
+      {/* Compact Header Row */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${
+            <div className={`w-2 h-2 rounded-full ${
               board.isOnline ? 'bg-green-500' : 'bg-red-500'
             }`} />
             <h3 className="text-lg font-semibold text-gray-900">{board.name}</h3>
@@ -55,14 +49,14 @@ export const BoardCard: React.FC<BoardCardProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={() => onRefresh(board.id)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-100"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
               title="Refresh"
             >
               <Settings size={16} />
             </button>
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-100"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
               title={expanded ? "Collapse" : "Expand"}
             >
               {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -71,56 +65,55 @@ export const BoardCard: React.FC<BoardCardProps> = ({
         </div>
 
         {/* IP Address */}
-        <p className="text-sm text-gray-600 mb-3">
-          <span className="font-mono">{board.ip}</span>
-          {board.port && board.port !== 80 && `:${board.port}`}
+        <p className="text-sm text-gray-600 mb-4 font-mono">
+          {board.ip}{board.port && board.port !== 80 && `:${board.port}`}
         </p>
 
-        {/* Essential Controls - Always Visible */}
+        {/* Compact Controls Row */}
         {board.isOnline && board.state && (
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             {/* Power Toggle */}
             <button
               onClick={() => onToggle(board.id, !board.state!.on)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
+              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
                 board.state!.on 
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200 shadow-sm' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm'
               }`}
             >
               <Power size={16} />
-              <span className="text-sm font-medium">
+              <span className="text-sm">
                 {board.state!.on ? 'ON' : 'OFF'}
               </span>
             </button>
 
-            {/* Sync Controls */}
-            <div className="flex items-center space-x-2">
+            {/* Sync Controls - Compact Design */}
+            <div className="flex items-center space-x-3">
               <button
                 onClick={() => onToggleSync(board.id, 'emit', !board.syncEmit)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1 ${
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
                   board.syncEmit 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm'
                 }`}
                 title={`SYNC Emit: ${board.syncEmit ? 'ON' : 'OFF'}`}
               >
                 <Radio size={14} className={board.syncEmit ? 'text-blue-600' : 'text-gray-500'} />
-                <span>Emit</span>
-                <div className={`w-2 h-2 rounded-full ${board.syncEmit ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                <span>Send</span>
+                <div className={`w-3 h-3 rounded-full ${board.syncEmit ? 'bg-green-500' : 'bg-red-500'}`} />
               </button>
               <button
                 onClick={() => onToggleSync(board.id, 'receive', !board.syncReceive)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1 ${
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
                   board.syncReceive 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 shadow-sm' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm'
                 }`}
                 title={`SYNC Receive: ${board.syncReceive ? 'ON' : 'OFF'}`}
               >
                 <Radio size={14} className={board.syncReceive ? 'text-blue-600' : 'text-gray-500'} />
                 <span>Recv</span>
-                <div className={`w-2 h-2 rounded-full ${board.syncReceive ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                <div className={`w-3 h-3 rounded-full ${board.syncReceive ? 'bg-green-500' : 'bg-red-500'}`} />
               </button>
             </div>
           </div>
@@ -139,7 +132,7 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             </span>
           </div>
           {board.lastSeen && (
-            <span className="text-gray-500">
+            <span className="text-gray-500 text-xs">
               {board.lastSeen.toLocaleTimeString()}
             </span>
           )}
@@ -148,60 +141,65 @@ export const BoardCard: React.FC<BoardCardProps> = ({
 
       {/* Expandable Details */}
       {expanded && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
+        <div className="border-t border-gray-100 p-4 bg-gray-50/50">
           {/* Sync Status Details */}
-          <div className="mb-4 p-3 bg-white rounded-md">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Sync Status</h4>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Radio 
-                  size={16} 
-                  className={getSyncStatusColor(board.syncEmit, board.syncReceive)} 
-                />
-                <span className={`text-sm ${getSyncStatusColor(board.syncEmit, board.syncReceive)}`}>
-                  Emit: {board.syncEmit ? 'ON' : 'OFF'}
-                </span>
+          <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-800 mb-3">Sync Status Details</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <Radio size={16} className={board.syncEmit ? 'text-blue-600' : 'text-gray-500'} />
+                  <span className="text-sm font-medium text-gray-700">Send</span>
+                </div>
+                <div className={`w-4 h-4 rounded-full mx-auto ${board.syncEmit ? 'bg-green-500' : 'bg-red-500'}`} />
+                <p className="text-xs text-gray-600 mt-1">{board.syncEmit ? 'Active' : 'Inactive'}</p>
               </div>
-              <div className="flex items-center space-x-2">
-                <Radio 
-                  size={16} 
-                  className={getSyncStatusColor(board.syncEmit, board.syncReceive)} 
-                />
-                <span className={`text-sm ${getSyncStatusColor(board.syncEmit, board.syncReceive)}`}>
-                  Receive: {board.syncReceive ? 'ON' : 'OFF'}
-                </span>
+              <div className="text-center p-3 rounded-lg bg-gray-50">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <Radio size={16} className={board.syncReceive ? 'text-blue-600' : 'text-gray-500'} />
+                  <span className="text-sm font-medium text-gray-700">Receive</span>
+                </div>
+                <div className={`w-4 h-4 rounded-full mx-auto ${board.syncReceive ? 'bg-green-500' : 'bg-red-500'}`} />
+                <p className="text-xs text-gray-600 mt-1">{board.syncReceive ? 'Active' : 'Inactive'}</p>
               </div>
             </div>
           </div>
 
           {/* Board Info */}
           {board.info && (
-            <div className="mb-4 space-y-2 text-sm text-gray-600">
-              <div className="flex justify-between">
-                <span>Version:</span>
-                <span className="font-mono">{board.info.ver}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>LEDs:</span>
-                <span>{board.info.leds.count}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Uptime:</span>
-                <span>{formatUptime(board.info.uptime)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Free Memory:</span>
-                <span>{(board.info.freeheap / 1024).toFixed(1)}KB</span>
+            <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Board Information</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Version:</span>
+                    <span className="font-mono text-gray-800">{board.info.ver}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">LEDs:</span>
+                    <span className="font-semibold text-gray-800">{board.info.leds.count}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Uptime:</span>
+                    <span className="font-semibold text-gray-800">{formatUptime(board.info.uptime)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Memory:</span>
+                    <span className="font-semibold text-gray-800">{(board.info.freeheap / 1024).toFixed(1)}KB</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Brightness Control */}
           {board.isOnline && board.state && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Brightness</span>
-                <span className="text-sm text-gray-500">{board.state!.bri}%</span>
+            <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-gray-800">Brightness Control</span>
+                <span className="text-sm font-bold text-blue-600">{board.state!.bri}%</span>
               </div>
               <input
                 type="range"
@@ -209,16 +207,17 @@ export const BoardCard: React.FC<BoardCardProps> = ({
                 max="255"
                 value={board.state!.bri}
                 onChange={(e) => onBrightnessChange(board.id, parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
               />
             </div>
           )}
 
           {/* Offline Message */}
           {!board.isOnline && (
-            <div className="text-center py-4">
-              <WifiOff size={24} className="text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Board is offline</p>
+            <div className="text-center py-6 bg-white rounded-xl shadow-sm border border-gray-100">
+              <WifiOff size={32} className="text-gray-400 mx-auto mb-3" />
+              <p className="text-sm font-medium text-gray-600">Board is offline</p>
+              <p className="text-xs text-gray-500 mt-1">Check network connection</p>
             </div>
           )}
         </div>

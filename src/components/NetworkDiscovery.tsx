@@ -68,35 +68,43 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Network Discovery</h2>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <Wifi size={16} />
-          <span>{boardCount} board{boardCount !== 1 ? 's' : ''} found</span>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-100 rounded-xl">
+            <Wifi size={20} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Scanner Form</h2>
+            <p className="text-sm text-gray-600">Discover and manage WLED devices</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 text-sm bg-gray-50 px-3 py-2 rounded-xl">
+          <Wifi size={16} className="text-gray-500" />
+          <span className="font-medium text-gray-700">{boardCount} board{boardCount !== 1 ? 's' : ''} found</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div>
-          <label htmlFor="networkRange" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="networkRange" className="block text-sm font-semibold text-gray-700 mb-2">
             Network Range
           </label>
-                      <input
-              type="text"
-              id="networkRange"
-              value={networkRange}
-              onChange={(e) => handleNetworkRangeChange(e.target.value)}
-              placeholder="192.168.1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <input
+            type="text"
+            id="networkRange"
+            value={networkRange}
+            onChange={(e) => handleNetworkRangeChange(e.target.value)}
+            placeholder="192.168.4"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+          />
         </div>
 
         <div className="flex items-end">
           <button
             onClick={handleDiscover}
             disabled={loading}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200"
           >
             {loading ? (
               <RefreshCw size={16} className="animate-spin" />
@@ -110,7 +118,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
         <div className="flex items-end">
           <button
             onClick={onAddManual}
-            className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-3 rounded-xl hover:from-gray-700 hover:to-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200"
           >
             <Plus size={16} />
             <span>Add Manually</span>
@@ -121,7 +129,7 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
           <button
             onClick={handleTestIP}
             disabled={!testIP.trim() || testingIP}
-            className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-3 rounded-xl hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200"
           >
             {testingIP ? (
               <RefreshCw size={16} className="animate-spin" />
@@ -133,31 +141,31 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
         </div>
       </div>
 
-      {/* Test Specific IP */}
-      <div className="mb-4">
-        <label htmlFor="testIP" className="block text-sm font-medium text-gray-700 mb-2">
+            {/* Test Specific IP */}
+      <div className="mb-6">
+        <label htmlFor="testIP" className="block text-sm font-semibold text-gray-700 mb-2">
           Test Specific IP Address
         </label>
-        <div className="flex space-x-2">
-                      <input
-              type="text"
-              id="testIP"
-              value={testIP}
-              onChange={(e) => handleTestIPChange(e.target.value)}
-              placeholder="192.168.4.253"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            />
+        <div className="flex space-x-3">
+          <input
+            type="text"
+            id="testIP"
+            value={testIP}
+            onChange={(e) => handleTestIPChange(e.target.value)}
+            placeholder="192.168.4.253"
+            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200"
+          />
         </div>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-gray-500">
           Enter a specific IP address to test if it's a WLED device
         </p>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>
+      <div className="flex items-center justify-between text-sm text-gray-500 bg-gray-50 px-4 py-3 rounded-xl">
+        <span className="font-medium">
           Last discovery: {formatLastRefresh()}
         </span>
-        <span className="text-xs">
+        <span className="text-xs bg-white px-2 py-1 rounded-lg">
           Scans IP range {networkRange}.1 to {networkRange}.254
         </span>
       </div>
