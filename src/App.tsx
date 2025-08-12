@@ -23,25 +23,21 @@ function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [networkRange, setNetworkRange] = useState('192.168.4');
 
-  // Auto-discover boards on first load
+  // Auto-discover boards on first load if none exist
   useEffect(() => {
-    const savedNetworkRange = localStorage.getItem('wled-network-range');
-    if (savedNetworkRange) {
-      setNetworkRange(savedNetworkRange);
-    }
-    
-    // Auto-discover after a short delay
-    const timer = setTimeout(() => {
-      discoverBoards(savedNetworkRange || networkRange);
-    }, 1000);
+    if (boards.length === 0) {
+      // Auto-discover after a short delay
+      const timer = setTimeout(() => {
+        discoverBoards(networkRange);
+      }, 1000);
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [boards.length, networkRange, discoverBoards]);
 
   const handleDiscover = (range?: string) => {
     const rangeToUse = range || networkRange;
     setNetworkRange(rangeToUse);
-    localStorage.setItem('wled-network-range', rangeToUse);
     discoverBoards(rangeToUse);
   };
 

@@ -18,23 +18,41 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
   lastRefresh,
   boardCount
 }) => {
-  const [networkRange, setNetworkRange] = useState('192.168.1');
-  const [testIP, setTestIP] = useState('');
+  const [networkRange, setNetworkRange] = useState(() => {
+    const saved = localStorage.getItem('wled-network-range');
+    return saved || '192.168.4';
+  });
+  const [testIP, setTestIP] = useState(() => {
+    const saved = localStorage.getItem('wled-test-ip');
+    return saved || '';
+  });
   const [testingIP, setTestingIP] = useState(false);
 
   const handleDiscover = () => {
+    localStorage.setItem('wled-network-range', networkRange);
     onDiscover(networkRange);
   };
 
   const handleTestIP = async () => {
     if (!testIP.trim()) return;
     
+    localStorage.setItem('wled-test-ip', testIP.trim());
     setTestingIP(true);
     try {
       await onTestIP(testIP.trim());
     } finally {
       setTestingIP(false);
     }
+  };
+
+  const handleNetworkRangeChange = (value: string) => {
+    setNetworkRange(value);
+    localStorage.setItem('wled-network-range', value);
+  };
+
+  const handleTestIPChange = (value: string) => {
+    setTestIP(value);
+    localStorage.setItem('wled-test-ip', value);
   };
 
   const formatLastRefresh = () => {
@@ -64,14 +82,14 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
           <label htmlFor="networkRange" className="block text-sm font-medium text-gray-700 mb-2">
             Network Range
           </label>
-          <input
-            type="text"
-            id="networkRange"
-            value={networkRange}
-            onChange={(e) => setNetworkRange(e.target.value)}
-            placeholder="192.168.1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+                      <input
+              type="text"
+              id="networkRange"
+              value={networkRange}
+              onChange={(e) => handleNetworkRangeChange(e.target.value)}
+              placeholder="192.168.1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
         </div>
 
         <div className="flex items-end">
@@ -121,14 +139,14 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
           Test Specific IP Address
         </label>
         <div className="flex space-x-2">
-          <input
-            type="text"
-            id="testIP"
-            value={testIP}
-            onChange={(e) => setTestIP(e.target.value)}
-            placeholder="192.168.4.253"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          />
+                      <input
+              type="text"
+              id="testIP"
+              value={testIP}
+              onChange={(e) => handleTestIPChange(e.target.value)}
+              placeholder="192.168.4.253"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
         </div>
         <p className="mt-1 text-xs text-gray-500">
           Enter a specific IP address to test if it's a WLED device

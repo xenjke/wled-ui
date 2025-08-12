@@ -98,27 +98,29 @@ export const BoardCard: React.FC<BoardCardProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onToggleSync(board.id, 'emit', !board.syncEmit)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1 ${
                   board.syncEmit 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                 }`}
-                title="Toggle SYNC Emit"
+                title={`SYNC Emit: ${board.syncEmit ? 'ON' : 'OFF'}`}
               >
-                <Radio size={14} className="inline mr-1" />
-                Emit
+                <Radio size={14} className={board.syncEmit ? 'text-blue-600' : 'text-gray-500'} />
+                <span>Emit</span>
+                <div className={`w-2 h-2 rounded-full ${board.syncEmit ? 'bg-blue-500' : 'bg-gray-400'}`} />
               </button>
               <button
                 onClick={() => onToggleSync(board.id, 'receive', !board.syncReceive)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1 ${
                   board.syncReceive 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300'
                 }`}
-                title="Toggle SYNC Receive"
+                title={`SYNC Receive: ${board.syncReceive ? 'ON' : 'OFF'}`}
               >
-                <Radio size={14} className="inline mr-1" />
-                Recv
+                <Radio size={14} className={board.syncReceive ? 'text-blue-600' : 'text-gray-500'} />
+                <span>Recv</span>
+                <div className={`w-2 h-2 rounded-full ${board.syncReceive ? 'bg-blue-500' : 'bg-gray-400'}`} />
               </button>
             </div>
           </div>
