@@ -4,10 +4,10 @@ import {
   Power,
   Wifi,
   WifiOff,
-  Radio,
-  Settings,
+  Send,
+  Download,
+  RefreshCw,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 interface BoardCardProps {
@@ -29,307 +29,232 @@ export const BoardCard: React.FC<BoardCardProps> = ({
   onRefresh,
   onToggleSync,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
-  const formatUptime = (seconds: number) => {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+  const handleToggle = () => {
+    onToggle(board.id, !board.state?.on);
+  };
 
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+  const handleBrightnessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    onBrightnessChange(board.id, value);
   };
 
   return (
-    <div
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md ${
-        board.isOnline
-          ? "border-l-4 border-l-green-500"
-          : "border-l-4 border-l-red-500"
-      }`}
-    >
-      {/* Compact Header Row */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-md">
+      {/* Header Section */}
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
-            {/* Online/Offline WiFi Icon - Fixed width container */}
-            <div className="w-5 h-5 flex items-center justify-center">
+            {/* Online Status Icon */}
+            <div className="relative">
               {board.isOnline ? (
-                <Wifi size={20} className="text-green-500" />
+                <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg">
+                  <Wifi className="h-5 w-5 text-green-600" />
+                </div>
               ) : (
-                <WifiOff size={20} className="text-red-500" />
+                <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg">
+                  <WifiOff className="h-5 w-5 text-red-600" />
+                </div>
               )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {board.name}
-            </h3>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
-              title={expanded ? "Collapse" : "Expand"}
-            >
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
-          </div>
-        </div>
 
-        {/* Compact Controls Row */}
-        {board.isOnline && board.state && (
-          <div className="flex items-center justify-between mb-4">
-            {/* Power Toggle */}
-            <button
-              onClick={() => onToggle(board.id, !board.state!.on)}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 font-medium ${
-                board.state!.on
-                  ? "bg-green-100 text-green-700 hover:bg-green-200 shadow-sm"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm"
+            {/* Board Info */}
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 leading-tight">
+                {board.name}
+              </h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-xs text-gray-500 font-mono">
+                  {board.ip}
+                </span>
+                <button
+                  onClick={() => onRefresh(board.id)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Refresh"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Toggle */}
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
+            title="Toggle details"
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                showDetails ? "rotate-180" : ""
               }`}
-            >
-              <Power size={16} />
-              <span className="text-sm">{board.state!.on ? "ON" : "OFF"}</span>
-            </button>
+            />
+          </button>
+        </div>
+        {/* Main Controls */}
+        {board.isOnline && (
+          <div className="flex items-center justify-center space-x-4">
+            {/* Power Toggle */}
+            <div className="flex flex-col items-center space-y-1">
+              <button
+                onClick={handleToggle}
+                className={`flex items-center justify-center w-12 h-12 rounded-xl font-medium transition-all duration-200 ${
+                  board.state?.on
+                    ? "bg-green-100 text-green-700 hover:bg-green-200 shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+              >
+                <Power className="h-6 w-6" />
+              </button>
+              <span className="text-[10px] font-medium text-gray-600">
+                Power
+              </span>
+            </div>
 
-            {/* Sync Controls - Compact Design */}
-            <div className="flex items-center space-x-3">
+            {/* Sync Send */}
+            <div className="flex flex-col items-center space-y-1">
               <button
                 onClick={() => onToggleSync(board.id, "emit", !board.syncEmit)}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 min-w-[100px] ${
+                className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
                   board.syncEmit
-                    ? "bg-orange-100 text-orange-700 hover:bg-orange-200 shadow-sm"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm"
+                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200 shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
-                style={{
-                  backgroundColor: board.syncEmit ? "#fed7aa" : "#f3f4f6",
-                  color: board.syncEmit ? "#c2410c" : "#4b5563",
-                }}
-                title={`SYNC Emit: ${board.syncEmit ? "ON" : "OFF"}`}
+                title="Send sync"
               >
-                <Radio
-                  size={14}
-                  className={
-                    board.syncEmit ? "text-orange-600" : "text-gray-500"
-                  }
-                />
-                <span className="min-w-[32px]">Send</span>
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    board.syncEmit ? "bg-green-500" : "bg-red-500"
-                  }`}
-                />
+                <Send className="h-5 w-5" />
               </button>
+              <span className="text-[10px] font-medium text-gray-600">
+                Send
+              </span>
+            </div>
+
+            {/* Sync Receive */}
+            <div className="flex flex-col items-center space-y-1">
               <button
                 onClick={() =>
                   onToggleSync(board.id, "receive", !board.syncReceive)
                 }
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 min-w-[100px] ${
+                className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 ${
                   board.syncReceive
-                    ? "bg-cyan-100 text-cyan-700 hover:bg-cyan-200 shadow-sm"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-sm"
+                    ? "bg-cyan-100 text-cyan-600 hover:bg-cyan-200 shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
-                style={{
-                  backgroundColor: board.syncReceive ? "#cffafe" : "#f3f4f6",
-                  color: board.syncReceive ? "#0e7490" : "#4b5563",
-                }}
-                title={`SYNC Receive: ${board.syncReceive ? "ON" : "OFF"}`}
+                title="Receive sync"
               >
-                <Radio
-                  size={14}
-                  className={
-                    board.syncReceive ? "text-cyan-600" : "text-gray-500"
-                  }
-                />
-                <span className="min-w-[32px]">Recv</span>
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    board.syncReceive ? "bg-green-500" : "bg-red-500"
-                  }`}
-                />
+                <Download className="h-5 w-5" />
               </button>
+              <span className="text-[10px] font-medium text-gray-600">
+                Receive
+              </span>
             </div>
+          </div>
+        )}
+
+        {/* Offline State */}
+        {!board.isOnline && (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-2xl mb-4">
+              <WifiOff className="h-8 w-8 text-gray-400" />
+            </div>
+            <h4 className="text-lg font-medium text-gray-600 mb-2">
+              Device Offline
+            </h4>
+            <p className="text-sm text-gray-500">Check network connection</p>
           </div>
         )}
       </div>
 
       {/* Expandable Details */}
-      {expanded && (
-        <div className="border-t border-gray-100 p-4 bg-gray-50/50">
-          {/* Connection Info */}
-          <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-gray-800">
-                Connection Info
-              </h4>
-              <button
-                onClick={() => onRefresh(board.id)}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-50"
-                title="Refresh Board Status"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">IP Address:</span>
-                  <span className="font-mono text-gray-800">
-                    {board.ip}
-                    {board.port && board.port !== 80 && `:${board.port}`}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span
-                    className={
-                      board.isOnline
-                        ? "text-green-600 font-medium"
-                        : "text-red-600 font-medium"
-                    }
-                  >
-                    {board.isOnline ? "Online" : "Offline"}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {board.lastSeen && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Last Seen:</span>
-                    <span className="text-gray-800">
-                      {board.lastSeen.toLocaleTimeString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          {/* Sync Status Details */}
-          <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <h4 className="text-sm font-semibold text-gray-800 mb-3">
-              Sync Status Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <Radio
-                    size={16}
-                    className={
-                      board.syncEmit ? "text-orange-600" : "text-gray-500"
-                    }
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Send
-                  </span>
-                </div>
-                <div
-                  className={`w-4 h-4 rounded-full mx-auto ${
-                    board.syncEmit ? "bg-green-500" : "bg-red-500"
-                  }`}
-                />
-                <p className="text-xs text-gray-600 mt-1">
-                  {board.syncEmit ? "Active" : "Inactive"}
-                </p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <Radio
-                    size={16}
-                    className={
-                      board.syncReceive ? "text-cyan-600" : "text-gray-500"
-                    }
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    Receive
-                  </span>
-                </div>
-                <div
-                  className={`w-4 h-4 rounded-full mx-auto ${
-                    board.syncReceive ? "bg-green-500" : "bg-red-500"
-                  }`}
-                />
-                <p className="text-xs text-gray-600 mt-1">
-                  {board.syncReceive ? "Active" : "Inactive"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Board Info */}
-          {board.info && (
-            <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                Board Information
-              </h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Version:</span>
-                    <span className="font-mono text-gray-800">
-                      {board.info.ver}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">LEDs:</span>
-                    <span className="font-semibold text-gray-800">
-                      {board.info.leds.count}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Uptime:</span>
-                    <span className="font-semibold text-gray-800">
-                      {formatUptime(board.info.uptime)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Memory:</span>
-                    <span className="font-semibold text-gray-800">
-                      {(board.info.freeheap / 1024).toFixed(1)}KB
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Brightness Control */}
-          {board.isOnline && board.state && (
-            <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-gray-800">
-                  Brightness Control
-                </span>
-                <span className="text-sm font-bold text-blue-600">
-                  {board.state!.bri}%
+      {showDetails && (
+        <div className="border-t border-gray-100 bg-gray-50 p-5">
+          {/* Brightness Control now inside details */}
+          {board.isOnline && board.state?.on && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-700">
+                  Brightness
+                </label>
+                <span className="text-xs font-semibold text-gray-900">
+                  {board.state.bri}
                 </span>
               </div>
               <input
                 type="range"
-                min="0"
+                min="1"
                 max="255"
-                value={board.state!.bri}
-                onChange={(e) =>
-                  onBrightnessChange(board.id, parseInt(e.target.value))
-                }
-                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                value={board.state.bri}
+                onChange={handleBrightnessChange}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
+                    (board.state.bri / 255) * 100
+                  }%, #e5e7eb ${(board.state.bri / 255) * 100}%, #e5e7eb 100%)`,
+                }}
               />
             </div>
           )}
-
-          {/* Offline Message */}
-          {!board.isOnline && (
-            <div className="text-center py-6 bg-white rounded-xl shadow-sm border border-gray-100">
-              <WifiOff size={32} className="text-gray-400 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-600">
-                Board is offline
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Check network connection
-              </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-700">Status</span>
+              <span
+                className={`font-semibold ${
+                  board.isOnline ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {board.isOnline ? "Online" : "Offline"}
+              </span>
             </div>
-          )}
+            <div className="flex justify-between">
+              <span className="font-medium text-gray-700">IP Address</span>
+              <span className="text-gray-900 font-mono">{board.ip}</span>
+            </div>
+            {board.isOnline && board.state && (
+              <>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">Power</span>
+                  <span
+                    className={`font-semibold ${
+                      board.state.on ? "text-green-600" : "text-gray-600"
+                    }`}
+                  >
+                    {board.state.on ? "On" : "Off"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">Send Sync</span>
+                  <span
+                    className={`font-semibold ${
+                      board.syncEmit ? "text-orange-600" : "text-gray-600"
+                    }`}
+                  >
+                    {board.syncEmit ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-700">
+                    Receive Sync
+                  </span>
+                  <span
+                    className={`font-semibold ${
+                      board.syncReceive ? "text-cyan-600" : "text-gray-600"
+                    }`}
+                  >
+                    {board.syncReceive ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </>
+            )}
+            {board.lastSeen && (
+              <div className="flex justify-between">
+                <span className="font-medium text-gray-700">Last Seen</span>
+                <span className="text-gray-900">
+                  {board.lastSeen.toLocaleTimeString()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@ import { useWLEDBoards } from "./hooks/useWLEDBoards";
 import { NetworkDiscovery } from "./components/NetworkDiscovery";
 import { BoardCard } from "./components/BoardCard";
 import { AddBoardModal } from "./components/AddBoardModal";
-import { Zap, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import { Zap, AlertCircle } from "lucide-react";
 import wledApi from "./services/wledApi";
 
 function App() {
@@ -73,40 +73,24 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header
-        className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg fallback-header"
-        style={{
-          background: "linear-gradient(to right, #2563eb, #7c3aed)",
-          color: "white",
-          padding: "1.25rem",
-          textAlign: "center",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-20">
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-3 mb-2">
-                <Zap
-                  className="h-8 w-8 text-yellow-300"
-                  style={{ color: "#fbbf24", height: "2rem", width: "2rem" }}
-                />
-                <h1 className="text-3xl font-bold">WLED Scanner</h1>
+      <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4">
+              <Zap className="h-8 w-8 text-yellow-300" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">WLED Scanner</h1>
+            <p className="text-blue-100 mb-6">
+              Discover and control your WLED devices
+            </p>
+            <div className="flex items-center justify-center space-x-8 text-sm">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span>{onlineBoards.length} online</span>
               </div>
-              <div className="flex items-center justify-center space-x-6 text-sm text-blue-100">
-                <div className="flex items-center space-x-2">
-                  <Wifi
-                    className="h-4 w-4 text-green-300"
-                    style={{ color: "#86efac", height: "1rem", width: "1rem" }}
-                  />
-                  <span>{onlineBoards.length} online</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <WifiOff
-                    className="h-4 w-4 text-red-300"
-                    style={{ color: "#fca5a5", height: "1rem", width: "1rem" }}
-                  />
-                  <span>{offlineBoards.length} offline</span>
-                </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <span>{offlineBoards.length} offline</span>
               </div>
             </div>
           </div>
@@ -114,43 +98,13 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main
-        className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
-        style={{
-          maxWidth: "64rem",
-          margin: "0 auto",
-          padding: "1.5rem 1rem",
-          backgroundColor: "#f9fafb",
-        }}
-      >
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Display */}
         {error && (
-          <div
-            className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm"
-            style={{
-              marginBottom: "1.5rem",
-              backgroundColor: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "0.75rem",
-              padding: "1rem",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-            }}
-          >
-            <div className="flex items-center space-x-2">
-              <AlertCircle
-                className="h-5 w-5 text-red-400"
-                style={{
-                  color: "#f87171",
-                  height: "1.25rem",
-                  width: "1.25rem",
-                }}
-              />
-              <span
-                className="text-red-800 font-medium"
-                style={{ color: "#991b1b", fontWeight: "500" }}
-              >
-                {error}
-              </span>
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl p-6">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
+              <span className="text-red-800 font-medium">{error}</span>
             </div>
           </div>
         )}
@@ -165,7 +119,7 @@ function App() {
           boardCount={boards.length}
         />
 
-        {/* Boards List - Mobile First Design */}
+        {/* Boards List */}
         {boards.length > 0 ? (
           <div className="space-y-6">
             {boards.map((board) => (
@@ -180,69 +134,22 @@ function App() {
             ))}
           </div>
         ) : (
-          <div
-            className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100"
-            style={{
-              textAlign: "center",
-              padding: "4rem 0",
-              backgroundColor: "white",
-              borderRadius: "1rem",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-              border: "1px solid #f3f4f6",
-            }}
-          >
-            <Zap
-              className="mx-auto h-16 w-16 text-gray-300 mb-4"
-              style={{
-                margin: "0 auto",
-                height: "4rem",
-                width: "4rem",
-                color: "#d1d5db",
-                marginBottom: "1rem",
-              }}
-            />
-            <h3
-              className="text-xl font-semibold text-gray-900 mb-3"
-              style={{
-                fontSize: "1.25rem",
-                fontWeight: "600",
-                color: "#111827",
-                marginBottom: "0.75rem",
-              }}
-            >
-              No WLED boards found
+          <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-2xl mb-6">
+              <Zap className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              No WLED devices found
             </h3>
-            <p
-              className="text-gray-500 mb-6 max-w-md mx-auto"
-              style={{
-                color: "#6b7280",
-                marginBottom: "1.5rem",
-                maxWidth: "28rem",
-                margin: "0 auto 1.5rem auto",
-              }}
-            >
-              Use the network discovery tool above to find WLED boards on your
-              network, or add them manually.
+            <p className="text-gray-500 mb-8 max-w-md mx-auto">
+              Use the device scanner above to find WLED devices on your network,
+              or add them manually.
             </p>
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "0.75rem 1.5rem",
-                border: "none",
-                fontSize: "0.875rem",
-                fontWeight: "500",
-                borderRadius: "0.75rem",
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                color: "white",
-                background: "linear-gradient(to right, #2563eb, #7c3aed)",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
             >
-              Add Board Manually
+              Add Device Manually
             </button>
           </div>
         )}
