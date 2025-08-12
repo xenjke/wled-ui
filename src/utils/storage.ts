@@ -26,5 +26,7 @@ export function loadDate(key: string): Date | null {
 }
 
 export function saveDate(key: string, date: Date) {
-  try { localStorage.setItem(key, date.toISOString()); } catch {}
+  try {
+    localStorage.setItem(key, date.toISOString());
+  } catch {}
 }

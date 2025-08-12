@@ -1,5 +1,5 @@
-import { WLEDBoard, WLEDInfo, WLEDState } from '../types/wled';
-import { WLED_DEFAULT_PORT } from '../constants';
+import { WLEDBoard, WLEDInfo, WLEDState } from "../types/wled";
+import { WLED_DEFAULT_PORT } from "../constants";
 
 export function createBoard(params: {
   id?: string;
@@ -23,11 +23,17 @@ export function createBoard(params: {
   };
 }
 
-export function updateBoard(board: WLEDBoard, patch: Partial<WLEDBoard>): WLEDBoard {
+export function updateBoard(
+  board: WLEDBoard,
+  patch: Partial<WLEDBoard>
+): WLEDBoard {
   return { ...board, ...patch };
 }
 
-export function withState(board: WLEDBoard, state: WLEDState | undefined): WLEDBoard {
+export function withState(
+  board: WLEDBoard,
+  state: WLEDState | undefined
+): WLEDBoard {
   return updateBoard(board, {
     state,
     lastSeen: new Date(),
