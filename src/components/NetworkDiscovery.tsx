@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Search, Plus, RefreshCw, Wifi } from "lucide-react";
+import { Button } from './ui/Button';
 
 interface NetworkDiscoveryProps {
   onDiscover: (networkRange?: string) => void;
@@ -108,26 +109,14 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto mb-8">
-        <button
-          onClick={handleDiscover}
-          disabled={loading}
-          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200"
-        >
-          {loading ? (
-            <RefreshCw size={18} className="animate-spin" />
-          ) : (
-            <Search size={18} />
-          )}
-          <span>{loading ? "Scanning..." : "Scan Network"}</span>
-        </button>
-
-        <button
-          onClick={onAddManual}
-          className="flex-1 bg-gray-600 text-white px-6 py-3 rounded-xl hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200"
-        >
+        <Button onClick={handleDiscover} disabled={loading} variant="primary" className="flex-1 flex items-center justify-center space-x-2">
+          {loading ? <RefreshCw size={18} className="animate-spin" /> : <Search size={18} />}
+          <span>{loading ? 'Scanning...' : 'Scan Network'}</span>
+        </Button>
+        <Button onClick={onAddManual} variant="secondary" className="flex-1 flex items-center justify-center space-x-2">
           <Plus size={18} />
           <span>Add Device</span>
-        </button>
+        </Button>
       </div>
 
       {/* Test Specific IP */}
@@ -147,20 +136,10 @@ export const NetworkDiscovery: React.FC<NetworkDiscoveryProps> = ({
             placeholder="192.168.4.253"
             className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 font-mono"
           />
-          <button
-            onClick={handleTestIP}
-            disabled={!testIP.trim() || testingIP}
-            className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium shadow-sm transition-all duration-200 min-w-[100px]"
-          >
-            {testingIP ? (
-              <RefreshCw size={16} className="animate-spin" />
-            ) : (
-              <Search size={16} />
-            )}
-            <span className="hidden sm:inline">
-              {testingIP ? "Testing..." : "Test"}
-            </span>
-          </button>
+          <Button onClick={handleTestIP} disabled={!testIP.trim() || testingIP} variant="primary" className="min-w-[100px] flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 focus:ring-green-500">
+            {testingIP ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
+            <span className="hidden sm:inline">{testingIP ? 'Testing...' : 'Test'}</span>
+          </Button>
         </div>
         <p className="mt-3 text-xs text-gray-500 text-center">
           Enter a specific IP address to test if it's a WLED device

@@ -1,243 +1,109 @@
-import { useState, useEffect, useCallback } from "react";
-import { WLEDBoard } from "../types/wled";
-import wledApi from "../services/wledApi";
+import { useEffect, useCallback, useReducer } from 'react';
+import { WLEDBoard } from '../types/wled';
+import wledApi from '../services/wledApi';
+import { boardsReducer, initialBoardsState } from '../state/boardsReducer';
+import { loadJSON, saveJSON, loadDate, saveDate } from '../utils/storage';
+import { LOCAL_STORAGE_KEYS, REFRESH_INTERVAL_MS } from '../constants';
 
 export const useWLEDBoards = () => {
-  const [boards, setBoards] = useState<WLEDBoard[]>(() => {
-    // Load boards from localStorage on initialization
-    const saved = localStorage.getItem("wled-boards");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Convert string dates back to Date objects
-        return parsed.map((board: any) => ({
-          ...board,
-          lastSeen: new Date(board.lastSeen),
-        }));
-      } catch (e) {
-        console.error("Failed to parse saved boards:", e);
-        return [];
-      }
-    }
-    return [];
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(() => {
-    const saved = localStorage.getItem("wled-last-refresh");
-    return saved ? new Date(saved) : null;
-  });
+  const [state, dispatch] = useReducer(boardsReducer, initialBoardsState);
 
-  // Helper function to save boards to localStorage
-  const saveBoardsToStorage = useCallback((newBoards: WLEDBoard[]) => {
-    try {
-      localStorage.setItem("wled-boards", JSON.stringify(newBoards));
-    } catch (e) {
-      console.error("Failed to save boards to localStorage:", e);
-    }
+  // Load saved on mount
+  useEffect(() => {
+    const saved = loadJSON<any[]>(LOCAL_STORAGE_KEYS.boards, []);
+    const boards: WLEDBoard[] = saved.map((b) => ({ ...b, lastSeen: new Date(b.lastSeen) }));
+    const lastRefresh = loadDate(LOCAL_STORAGE_KEYS.lastRefresh);
+    dispatch({ type: 'LOAD_SAVED', boards, lastRefresh });
   }, []);
 
-  // Helper function to save last refresh time
-  const saveLastRefreshToStorage = useCallback((date: Date) => {
-    try {
-      localStorage.setItem("wled-last-refresh", date.toISOString());
-    } catch (e) {
-      console.error("Failed to save last refresh to localStorage:", e);
-    }
-  }, []);
+  // Persist boards + lastRefresh when they change
+  useEffect(() => {
+    saveJSON(LOCAL_STORAGE_KEYS.boards, state.boards);
+    if (state.lastRefresh) saveDate(LOCAL_STORAGE_KEYS.lastRefresh, state.lastRefresh);
+  }, [state.boards, state.lastRefresh]);
 
   const discoverBoards = useCallback(async (networkRange?: string) => {
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'DISCOVERY_START' });
     try {
       const discoveredBoards = await wledApi.discoverBoards(networkRange);
-      setBoards(discoveredBoards);
-      saveBoardsToStorage(discoveredBoards);
-      const refreshTime = new Date();
-      setLastRefresh(refreshTime);
-      saveLastRefreshToStorage(refreshTime);
+      dispatch({ type: 'DISCOVERY_COMPLETE', boards: discoveredBoards });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to discover boards"
-      );
-    } finally {
-      setLoading(false);
+      dispatch({ type: 'DISCOVERY_ERROR', error: err instanceof Error ? err.message : 'Failed to discover boards' });
     }
   }, []);
 
-  const refreshBoardStatus = useCallback(
-    async (boardId?: string) => {
-      if (boardId) {
-        // Refresh specific board
-        setBoards((prevBoards) =>
-          prevBoards.map((board) =>
-            board.id === boardId
-              ? { ...board, isOnline: false } // Temporarily mark as offline
-              : board
-          )
-        );
-
-        const board = boards.find((b) => b.id === boardId);
-        if (board) {
-          const updatedBoard = await wledApi.refreshBoardStatus(board);
-          setBoards((prevBoards) => {
-            const newBoards = prevBoards.map((b) =>
-              b.id === boardId ? updatedBoard : b
-            );
-            saveBoardsToStorage(newBoards);
-            return newBoards;
-          });
-        }
-      } else {
-        // Refresh all boards
-        setLoading(true);
-        try {
-          const updatedBoards = await Promise.all(
-            boards.map((board) => wledApi.refreshBoardStatus(board))
-          );
-          setBoards(updatedBoards);
-          saveBoardsToStorage(updatedBoards);
-          const refreshTime = new Date();
-          setLastRefresh(refreshTime);
-          saveLastRefreshToStorage(refreshTime);
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : "Failed to refresh boards"
-          );
-        } finally {
-          setLoading(false);
-        }
+  const refreshBoardStatus = useCallback(async (boardId?: string) => {
+    if (boardId) {
+      const target = state.boards.find((b) => b.id === boardId);
+      if (target) {
+        const updatedBoard = await wledApi.refreshBoardStatus(target);
+        dispatch({ type: 'BOARD_UPDATE', board: updatedBoard });
       }
-    },
-    [boards]
-  );
-
-  const toggleBoard = useCallback(
-    async (boardId: string, on: boolean) => {
-      const board = boards.find((b) => b.id === boardId);
-      if (board) {
-        const success = await wledApi.toggleBoard(board.ip, board.port, on);
-        if (success) {
-          // Update local state immediately for better UX
-          setBoards((prevBoards) => {
-            const newBoards = prevBoards.map((b) =>
-              b.id === boardId ? { ...b, state: { ...b.state, on } as any } : b
-            );
-            saveBoardsToStorage(newBoards);
-            return newBoards;
-          });
-          // Refresh the board to get updated state
-          setTimeout(() => refreshBoardStatus(boardId), 100);
-        }
+    } else {
+      dispatch({ type: 'REFRESH_START' });
+      try {
+        const updatedBoards = await Promise.all(state.boards.map((b) => wledApi.refreshBoardStatus(b)));
+        dispatch({ type: 'REFRESH_COMPLETE', boards: updatedBoards, lastRefresh: new Date() });
+      } catch (err) {
+        dispatch({ type: 'DISCOVERY_ERROR', error: err instanceof Error ? err.message : 'Failed to refresh boards' });
       }
-    },
-    [boards, refreshBoardStatus]
-  );
+    }
+  }, [state.boards]);
 
-  const setBrightness = useCallback(
-    async (boardId: string, brightness: number) => {
-      const board = boards.find((b) => b.id === boardId);
-      if (board) {
-        const success = await wledApi.setBrightness(
-          board.ip,
-          board.port,
-          brightness
-        );
-        if (success) {
-          // Update local state immediately for better UX
-          setBoards((prevBoards) => {
-            const newBoards = prevBoards.map((b) =>
-              b.id === boardId
-                ? { ...b, state: { ...b.state, bri: brightness } as any }
-                : b
-            );
-            saveBoardsToStorage(newBoards);
-            return newBoards;
-          });
-          // Refresh the board to get updated state
-          setTimeout(() => refreshBoardStatus(boardId), 100);
-        }
-      }
-    },
-    [boards, refreshBoardStatus]
-  );
+  const toggleBoard = useCallback(async (boardId: string, on: boolean) => {
+    const board = state.boards.find((b) => b.id === boardId);
+    if (!board) return;
+    const success = await wledApi.toggleBoard(board.ip, board.port, on);
+    if (success) {
+      dispatch({ type: 'BOARD_UPDATE', board: { ...board, state: { ...board.state, on } as any } });
+      setTimeout(() => refreshBoardStatus(boardId), 100);
+    }
+  }, [state.boards, refreshBoardStatus]);
 
-  const toggleSync = useCallback(
-    async (boardId: string, type: "emit" | "receive", enabled: boolean) => {
-      const board = boards.find((b) => b.id === boardId);
-      if (board) {
-        const success = await wledApi.toggleSync(
-          board.ip,
-          board.port,
-          type,
-          enabled
-        );
-        if (success) {
-          // Update local state immediately for better UX
-          setBoards((prevBoards) => {
-            const newBoards = prevBoards.map((b) =>
-              b.id === boardId
-                ? {
-                    ...b,
-                    syncEmit: type === "emit" ? enabled : b.syncEmit,
-                    syncReceive: type === "receive" ? enabled : b.syncReceive,
-                    lastSeen: new Date(), // Update last seen to keep it fresh
-                  }
-                : b
-            );
-            saveBoardsToStorage(newBoards);
-            return newBoards;
-          });
-          // Skip the immediate refresh to avoid flickering - let the periodic refresh handle it
-          // setTimeout(() => refreshBoardStatus(boardId), 100);
-        }
-      }
-    },
-    [boards]
-  );
+  const setBrightness = useCallback(async (boardId: string, brightness: number) => {
+    const board = state.boards.find((b) => b.id === boardId);
+    if (!board) return;
+    const success = await wledApi.setBrightness(board.ip, board.port, brightness);
+    if (success) {
+      dispatch({ type: 'BOARD_UPDATE', board: { ...board, state: { ...board.state, bri: brightness } as any } });
+      setTimeout(() => refreshBoardStatus(boardId), 100);
+    }
+  }, [state.boards, refreshBoardStatus]);
 
-  const addBoard = useCallback(
-    (board: WLEDBoard) => {
-      setBoards((prevBoards) => {
-        const exists = prevBoards.some((b) => b.id === board.id);
-        if (!exists) {
-          const newBoards = [...prevBoards, board];
-          saveBoardsToStorage(newBoards);
-          return newBoards;
-        }
-        return prevBoards;
-      });
-    },
-    [saveBoardsToStorage]
-  );
+  const toggleSync = useCallback(async (boardId: string, type: 'emit' | 'receive', enabled: boolean) => {
+    const board = state.boards.find((b) => b.id === boardId);
+    if (!board) return;
+    const success = await wledApi.toggleSync(board.ip, board.port, type, enabled);
+    if (success) {
+      dispatch({ type: 'BOARD_UPDATE', board: {
+        ...board,
+        syncEmit: type === 'emit' ? enabled : board.syncEmit,
+        syncReceive: type === 'receive' ? enabled : board.syncReceive,
+        lastSeen: new Date()
+      }});
+    }
+  }, [state.boards]);
 
-  const removeBoard = useCallback(
-    (boardId: string) => {
-      setBoards((prevBoards) => {
-        const newBoards = prevBoards.filter((b) => b.id !== boardId);
-        saveBoardsToStorage(newBoards);
-        return newBoards;
-      });
-    },
-    [saveBoardsToStorage]
-  );
+  const addBoard = useCallback((board: WLEDBoard) => {
+    dispatch({ type: 'ADD_BOARD', board });
+  }, []);
+
+  const removeBoard = useCallback((boardId: string) => {
+    dispatch({ type: 'REMOVE_BOARD', id: boardId });
+  }, []);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
-    if (boards.length === 0) return;
-
-    const interval = setInterval(() => {
-      refreshBoardStatus();
-    }, 30000);
-
+    if (state.boards.length === 0) return;
+    const interval = setInterval(() => { refreshBoardStatus(); }, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [boards.length, refreshBoardStatus]);
+  }, [state.boards.length, refreshBoardStatus]);
 
   return {
-    boards,
-    loading,
-    error,
-    lastRefresh,
+    boards: state.boards,
+    loading: state.loading,
+    error: state.error,
+    lastRefresh: state.lastRefresh,
     discoverBoards,
     refreshBoardStatus,
     toggleBoard,

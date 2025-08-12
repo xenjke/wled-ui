@@ -1,8 +1,10 @@
-import axios from "axios";
-import { WLEDInfo, WLEDState, WLEDBoard } from "../types/wled";
+import axios from 'axios';
+import { WLEDInfo, WLEDState, WLEDBoard } from '../types/wled';
+import { DISCOVERY_TIMEOUT_MS, WLED_DEFAULT_PORT, DISCOVERY_MAX_IN_FLIGHT } from '../constants';
+import { createLimiter } from '../utils/concurrency';
+import { createBoard, withState, markOffline } from '../domain/wledBoard';
 
-const WLED_PORT = 80;
-const DISCOVERY_TIMEOUT = 5000; // Increased from 2000ms to 5000ms
+const limiter = createLimiter(DISCOVERY_MAX_IN_FLIGHT);
 
 export class WLEDApiService {
   private static instance: WLEDApiService;
@@ -16,13 +18,10 @@ export class WLEDApiService {
     return WLEDApiService.instance;
   }
 
-  async getBoardInfo(
-    ip: string,
-    port: number = WLED_PORT
-  ): Promise<WLEDInfo | null> {
+  async getBoardInfo(ip: string, port: number = WLED_DEFAULT_PORT): Promise<WLEDInfo | null> {
     try {
       const response = await axios.get(`http://${ip}:${port}/json/info`, {
-        timeout: DISCOVERY_TIMEOUT,
+        timeout: DISCOVERY_TIMEOUT_MS,
       });
       return response.data;
     } catch (error) {
@@ -31,13 +30,10 @@ export class WLEDApiService {
     }
   }
 
-  async getBoardState(
-    ip: string,
-    port: number = WLED_PORT
-  ): Promise<WLEDState | null> {
+  async getBoardState(ip: string, port: number = WLED_DEFAULT_PORT): Promise<WLEDState | null> {
     try {
       const response = await axios.get(`http://${ip}:${port}/json/state`, {
-        timeout: DISCOVERY_TIMEOUT,
+        timeout: DISCOVERY_TIMEOUT_MS,
       });
       return response.data;
     } catch (error) {
@@ -46,11 +42,7 @@ export class WLEDApiService {
     }
   }
 
-  async toggleBoard(
-    ip: string,
-    port: number = WLED_PORT,
-    on: boolean
-  ): Promise<boolean> {
+  async toggleBoard(ip: string, port: number = WLED_DEFAULT_PORT, on: boolean): Promise<boolean> {
     try {
       await axios.post(`http://${ip}:${port}/json/state`, {
         on: on,
@@ -62,11 +54,7 @@ export class WLEDApiService {
     }
   }
 
-  async setBrightness(
-    ip: string,
-    port: number = WLED_PORT,
-    brightness: number
-  ): Promise<boolean> {
+  async setBrightness(ip: string, port: number = WLED_DEFAULT_PORT, brightness: number): Promise<boolean> {
     try {
       await axios.post(`http://${ip}:${port}/json/state`, {
         bri: Math.max(0, Math.min(255, brightness)),
@@ -78,12 +66,7 @@ export class WLEDApiService {
     }
   }
 
-  async toggleSync(
-    ip: string,
-    port: number = WLED_PORT,
-    type: "emit" | "receive",
-    enabled: boolean
-  ): Promise<boolean> {
+  async toggleSync(ip: string, port: number = WLED_DEFAULT_PORT, type: 'emit' | 'receive', enabled: boolean): Promise<boolean> {
     try {
       const payload: any = {};
       if (type === "emit") {
@@ -102,56 +85,29 @@ export class WLEDApiService {
   }
 
   async discoverBoards(networkRange?: string): Promise<WLEDBoard[]> {
-    const boards: WLEDBoard[] = [];
-
-    // If a specific network range is provided, scan only that one
-    if (networkRange) {
-      console.log(`Scanning network range: ${networkRange}.x`);
-      const rangeBoards = await this.scanNetworkRange(networkRange);
-      boards.push(...rangeBoards);
-    } else {
-      // Scan common network ranges
-      const commonRanges = [
-        "192.168.1",
-        "192.168.4",
-        "192.168.0",
-        "10.0.0",
-        "172.16.0",
-      ];
-      console.log("Scanning common network ranges:", commonRanges);
-
-      for (const range of commonRanges) {
-        console.log(`Scanning ${range}.x...`);
-        const rangeBoards = await this.scanNetworkRange(range);
-        boards.push(...rangeBoards);
-
-        // Small delay between ranges to avoid overwhelming the network
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+    const ranges = networkRange ? [networkRange] : ['192.168.1', '192.168.4', '192.168.0', '10.0.0', '172.16.0'];
+    const results: WLEDBoard[] = [];
+    for (const range of ranges) {
+      const found = await this.scanNetworkRange(range);
+      results.push(...found);
+      if (!networkRange) await new Promise(r => setTimeout(r, 100));
     }
-
-    console.log(`Discovery complete. Found ${boards.length} WLED boards.`);
-    return boards;
+    return results;
   }
 
   private async scanNetworkRange(networkRange: string): Promise<WLEDBoard[]> {
-    const boards: WLEDBoard[] = [];
-    const promises: Promise<void>[] = [];
-
-    // Scan IP range 1-254
+    const collected: WLEDBoard[] = [];
+    const tasks: Promise<void>[] = [];
     for (let i = 1; i <= 254; i++) {
       const ip = `${networkRange}.${i}`;
-      const promise = this.checkForWLEDDevice(ip).then((board) => {
-        if (board) {
-          console.log(`Found WLED device at ${ip}: ${board.name}`);
-          boards.push(board);
-        }
-      });
-      promises.push(promise);
+      tasks.push(
+        limiter(() => this.checkForWLEDDevice(ip)).then(board => {
+          if (board) collected.push(board);
+        })
+      );
     }
-
-    await Promise.allSettled(promises);
-    return boards;
+    await Promise.allSettled(tasks);
+    return collected;
   }
 
   private async checkForWLEDDevice(ip: string): Promise<WLEDBoard | null> {
@@ -160,18 +116,14 @@ export class WLEDApiService {
       if (info) {
         console.log(`Found WLED device at ${ip}: ${info.name} (v${info.ver})`);
         const state = await this.getBoardState(ip);
-        return {
+        return createBoard({
           id: info.mac || ip,
-          name: info.name || `WLED-${ip.split(".").pop()}`,
+          name: info.name || `WLED-${ip.split('.').pop()}`,
           ip,
-          port: WLED_PORT,
+          port: WLED_DEFAULT_PORT,
           info,
           state: state || undefined,
-          lastSeen: new Date(),
-          isOnline: true,
-          syncEmit: state?.udpn?.send || false,
-          syncReceive: state?.udpn?.receive || false,
-        };
+        });
       }
     } catch (error) {
       // Device not found or not responding - this is normal for most IPs
@@ -184,10 +136,7 @@ export class WLEDApiService {
   }
 
   // Method to test a specific IP address
-  async testSpecificIP(
-    ip: string,
-    port: number = WLED_PORT
-  ): Promise<WLEDBoard | null> {
+  async testSpecificIP(ip: string, port: number = WLED_DEFAULT_PORT): Promise<WLEDBoard | null> {
     console.log(`Testing specific IP: ${ip}:${port}`);
     try {
       const board = await this.checkForWLEDDevice(ip);
@@ -210,28 +159,12 @@ export class WLEDApiService {
       const state = await this.getBoardState(board.ip, board.port);
 
       if (info && state) {
-        return {
-          ...board,
-          info,
-          state,
-          lastSeen: new Date(),
-          isOnline: true,
-          syncEmit: state.udpn?.send || false,
-          syncReceive: state.udpn?.receive || false,
-        };
+        return withState({ ...board, info }, state);
       } else {
-        return {
-          ...board,
-          isOnline: false,
-          lastSeen: new Date(),
-        };
+        return markOffline(board);
       }
     } catch (error) {
-      return {
-        ...board,
-        isOnline: false,
-        lastSeen: new Date(),
-      };
+      return markOffline(board);
     }
   }
 }
