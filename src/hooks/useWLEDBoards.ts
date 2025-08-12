@@ -95,6 +95,29 @@ export const useWLEDBoards = () => {
     }
   }, [boards, refreshBoardStatus]);
 
+  const toggleSync = useCallback(async (boardId: string, type: 'emit' | 'receive', enabled: boolean) => {
+    const board = boards.find(b => b.id === boardId);
+    if (board) {
+      const success = await wledApi.toggleSync(board.ip, board.port, type, enabled);
+      if (success) {
+        // Update local state immediately for better UX
+        setBoards(prevBoards => 
+          prevBoards.map(b => 
+            b.id === boardId 
+              ? { 
+                  ...b, 
+                  syncEmit: type === 'emit' ? enabled : b.syncEmit,
+                  syncReceive: type === 'receive' ? enabled : b.syncReceive
+                }
+              : b
+          )
+        );
+        // Refresh the board to get updated state
+        setTimeout(() => refreshBoardStatus(boardId), 100);
+      }
+    }
+  }, [boards, refreshBoardStatus]);
+
   const addBoard = useCallback((board: WLEDBoard) => {
     setBoards(prevBoards => {
       const exists = prevBoards.some(b => b.id === board.id);
@@ -129,6 +152,7 @@ export const useWLEDBoards = () => {
     refreshBoardStatus,
     toggleBoard,
     setBrightness,
+    toggleSync,
     addBoard,
     removeBoard
   };

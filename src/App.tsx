@@ -16,6 +16,7 @@ function App() {
     refreshBoardStatus,
     toggleBoard,
     setBrightness,
+    toggleSync,
     addBoard
   } = useWLEDBoards();
 
@@ -125,6 +126,7 @@ function App() {
                 onToggle={toggleBoard}
                 onBrightnessChange={setBrightness}
                 onRefresh={refreshBoardStatus}
+                onToggleSync={toggleSync}
               />
             ))}
           </div>

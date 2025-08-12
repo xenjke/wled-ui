@@ -2,7 +2,7 @@ import axios from 'axios';
 import { WLEDInfo, WLEDState, WLEDBoard } from '../types/wled';
 
 const WLED_PORT = 80;
-const DISCOVERY_TIMEOUT = 2000;
+const DISCOVERY_TIMEOUT = 5000; // Increased from 2000ms to 5000ms
 
 export class WLEDApiService {
   private static instance: WLEDApiService;
@@ -52,7 +52,7 @@ export class WLEDApiService {
     }
   }
 
-  async setBrightness(ip: string, port: number = WLED_PORT, brightness: number): Promise<boolean> {
+    async setBrightness(ip: string, port: number = WLED_PORT, brightness: number): Promise<boolean> {
     try {
       await axios.post(`http://${ip}:${port}/json/state`, {
         bri: Math.max(0, Math.min(255, brightness))
@@ -60,6 +60,23 @@ export class WLEDApiService {
       return true;
     } catch (error) {
       console.error(`Failed to set brightness for ${ip}:`, error);
+      return false;
+    }
+  }
+
+  async toggleSync(ip: string, port: number = WLED_PORT, type: 'emit' | 'receive', enabled: boolean): Promise<boolean> {
+    try {
+      const payload: any = {};
+      if (type === 'emit') {
+        payload.udpn = { send: enabled };
+      } else if (type === 'receive') {
+        payload.udpn = { recv: enabled };
+      }
+      
+      await axios.post(`http://${ip}:${port}/json/state`, payload);
+      return true;
+    } catch (error) {
+      console.error(`Failed to toggle ${type} sync for ${ip}:`, error);
       return false;
     }
   }
@@ -113,7 +130,6 @@ export class WLEDApiService {
 
   private async checkForWLEDDevice(ip: string): Promise<WLEDBoard | null> {
     try {
-      console.log(`Checking ${ip}...`);
       const info = await this.getBoardInfo(ip);
       if (info) {
         console.log(`Found WLED device at ${ip}: ${info.name} (v${info.ver})`);
@@ -133,8 +149,9 @@ export class WLEDApiService {
       }
     } catch (error) {
       // Device not found or not responding - this is normal for most IPs
-      if (error instanceof Error && error.message.includes('timeout')) {
-        // Timeout errors are expected for non-WLED devices
+      // Only log actual errors, not timeouts
+      if (error instanceof Error && !error.message.includes('timeout')) {
+        console.error(`Error checking ${ip}:`, error.message);
       }
     }
     return null;
