@@ -4,6 +4,7 @@ import { NetworkDiscovery } from './components/NetworkDiscovery';
 import { BoardCard } from './components/BoardCard';
 import { AddBoardModal } from './components/AddBoardModal';
 import { Zap, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import wledApi from './services/wledApi';
 
 function App() {
   const {
@@ -19,7 +20,7 @@ function App() {
   } = useWLEDBoards();
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [networkRange, setNetworkRange] = useState('192.168.1');
+  const [networkRange, setNetworkRange] = useState('192.168.4');
 
   // Auto-discover boards on first load
   useEffect(() => {
@@ -30,7 +31,7 @@ function App() {
     
     // Auto-discover after a short delay
     const timer = setTimeout(() => {
-      discoverBoards(networkRange);
+      discoverBoards(savedNetworkRange || networkRange);
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -46,6 +47,23 @@ function App() {
   const handleAddBoard = (board: any) => {
     addBoard(board);
     setShowAddModal(false);
+  };
+
+  const handleTestIP = async (ip: string) => {
+    try {
+      const board = await wledApi.testSpecificIP(ip);
+      if (board) {
+        // Add the discovered board to our list
+        addBoard(board);
+        // Show success message
+        alert(`Successfully found WLED device at ${ip}: ${board.name}`);
+      } else {
+        alert(`No WLED device found at ${ip}`);
+      }
+    } catch (error) {
+      console.error('Error testing IP:', error);
+      alert(`Error testing ${ip}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const onlineBoards = boards.filter(board => board.isOnline);
@@ -90,6 +108,7 @@ function App() {
         {/* Network Discovery */}
         <NetworkDiscovery
           onDiscover={handleDiscover}
+          onTestIP={handleTestIP}
           onAddManual={() => setShowAddModal(true)}
           loading={loading}
           lastRefresh={lastRefresh}

@@ -31,7 +31,7 @@ The dashboard provides a clean, card-based interface showing:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/wled-ui.git
+   git clone https://github.com/xenjke/wled-ui.git
    cd wled-ui
    ```
 
@@ -176,7 +176,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have questions:
 
 1. Check the [troubleshooting section](#troubleshooting)
-2. Search existing [GitHub issues](https://github.com/yourusername/wled-ui/issues)
+2. Search existing [GitHub issues](https://github.com/xenjke/wled-ui/issues)
 3. Create a new issue with detailed information
 
 ---
