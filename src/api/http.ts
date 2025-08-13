@@ -21,6 +21,7 @@ export async function handleApiResponse<T>(
 ): Promise<ApiResponse<T>> {
   try {
     const response = await promise;
+    console.log("API Response:", response.status, response.data);
     return { ok: true, data: response.data };
   } catch (error: any) {
     if (axios.isCancel(error)) {
@@ -30,7 +31,7 @@ export async function handleApiResponse<T>(
       error.response?.data?.error ||
       error.message ||
       "An unknown error occurred";
-    console.error("API Error:", errorMessage);
+    console.error("API Error:", errorMessage, error.response?.status);
     return { ok: false, error: errorMessage };
   }
 }

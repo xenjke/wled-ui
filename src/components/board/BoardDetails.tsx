@@ -1,7 +1,6 @@
 import React from "react";
 import { WLEDBoard } from "../../types/wled";
 import { WifiOff } from "lucide-react";
-import { Slider } from "../ui/Slider";
 
 interface BoardDetailsProps {
   board: WLEDBoard;
@@ -10,24 +9,6 @@ interface BoardDetailsProps {
 export const BoardDetails: React.FC<BoardDetailsProps> = ({ board }) => {
   return (
     <div className="border-t border-gray-100 bg-gray-50 p-5">
-      {board.isOnline && board.state?.on && (
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium text-gray-700">
-              Brightness
-            </label>
-            <span className="text-xs font-semibold text-gray-900">
-              {board.state.bri}
-            </span>
-          </div>
-          <Slider
-            min={1}
-            max={255}
-            value={board.state.bri}
-            onChange={() => {}}
-          />
-        </div>
-      )}
       {!board.isOnline && (
         <div className="text-center py-4">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl mb-3">

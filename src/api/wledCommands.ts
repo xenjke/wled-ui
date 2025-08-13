@@ -4,14 +4,24 @@ import { WLEDStateResponse } from "../types/wled";
 import { WLED_DEFAULT_PORT } from "../constants";
 
 const buildUrl = (ip: string) => `http://${ip}:${WLED_DEFAULT_PORT}/json/state`;
+const buildFullUrl = (ip: string) => `http://${ip}:${WLED_DEFAULT_PORT}/json`;
 
 /**
  * Fetches the latest state from a WLED board.
  * @param ip The IP address of the board.
- * @returns The full state response.
+ * @returns The state only.
  */
 export async function getBoardState(ip: string) {
   return handleApiResponse<WLEDStateResponse>(apiClient.get(buildUrl(ip)));
+}
+
+/**
+ * Fetches the complete state and info from a WLED board.
+ * @param ip The IP address of the board.
+ * @returns The full state and info response.
+ */
+export async function getBoardFullState(ip: string) {
+  return handleApiResponse<WLEDStateResponse>(apiClient.get(buildFullUrl(ip)));
 }
 
 /**
@@ -21,6 +31,7 @@ export async function getBoardState(ip: string) {
  * @returns The API response.
  */
 export async function setPower(ip: string, isOn: boolean) {
+  console.log(`Sending power command to ${ip}: ${isOn ? "ON" : "OFF"}`);
   return handleApiResponse(apiClient.post(buildUrl(ip), { on: isOn }));
 }
 
@@ -37,18 +48,18 @@ export async function setBrightness(ip: string, brightness: number) {
 /**
  * Toggles the sync state of a WLED board.
  * @param ip The IP address of the board.
- * @param shouldSync The desired sync state.
+ * @param shouldReceive The desired sync state.
  * @param shouldSend The desired send state.
  * @returns The API response.
  */
 export async function setSync(
   ip: string,
-  shouldSync: boolean,
+  shouldReceive: boolean,
   shouldSend: boolean
 ) {
   return handleApiResponse(
     apiClient.post(buildUrl(ip), {
-      udpn: { send: shouldSend, sync: shouldSync },
+      udpn: { send: shouldSend, recv: shouldReceive },
     })
   );
 }

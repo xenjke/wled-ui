@@ -7,7 +7,7 @@ interface BoardControlsProps {
   board: WLEDBoard;
   onTogglePower: (isOn: boolean) => void;
   onSetBrightness: (brightness: number) => void;
-  onSetSync: (sync: boolean, send: boolean) => void;
+  onSetSync: (receive: boolean, send: boolean) => void;
 }
 
 export const BoardControls: React.FC<BoardControlsProps> = ({
@@ -18,7 +18,20 @@ export const BoardControls: React.FC<BoardControlsProps> = ({
 }) => {
   if (!board.isOnline) return null;
 
+  console.log(`BoardControls - ${board.name}:`, {
+    isOnline: board.isOnline,
+    powerState: board.state?.on,
+    brightness: board.state?.bri,
+    syncEmit: board.syncEmit,
+    syncReceive: board.syncReceive,
+  });
+
   const handleBrightnessChange = (value: number) => {
+    console.log(
+      `Brightness changed to: ${value}, Device currently: ${
+        board.state?.on ? "ON" : "OFF"
+      }`
+    );
     onSetBrightness(value);
   };
 
@@ -27,7 +40,14 @@ export const BoardControls: React.FC<BoardControlsProps> = ({
       <div className="flex items-center justify-between">
         <span className="font-medium">Power</span>
         <Button
-          onClick={() => onTogglePower(!board.state?.on)}
+          onClick={() => {
+            console.log(
+              `Power button clicked - Current state: ${
+                board.state?.on
+              }, Toggling to: ${!board.state?.on}`
+            );
+            onTogglePower(!board.state?.on);
+          }}
           variant={board.state?.on ? "primary" : "secondary"}
         >
           {board.state?.on ? "On" : "Off"}

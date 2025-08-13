@@ -17,6 +17,11 @@ export const BoardHeader: React.FC<BoardHeaderProps> = ({
   expanded,
   onToggleExpand,
 }) => {
+  console.log(`BoardHeader - ${board.name}:`, {
+    isOnline: board.isOnline,
+    lastSeen: board.lastSeen,
+  });
+
   return (
     <div className="flex items-start justify-between mb-4">
       <div className="flex items-center space-x-3">

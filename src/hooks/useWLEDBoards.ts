@@ -1,30 +1,43 @@
-import { useEffect, useCallback, useReducer } from "react";
-import { WLEDBoard } from "../types/wled";
+import { useEffect, useCallback, useReducer, useState } from "react";
 import { boardsReducer, initialBoardsState } from "../state/boardsReducer";
-import { loadJSON, saveJSON } from "../utils/storage";
-import { LOCAL_STORAGE_KEYS, REFRESH_INTERVAL_MS } from "../constants";
+import { globalBoardsManager } from "../state/globalBoardsManager";
 import * as wledDiscovery from "../api/wledDiscovery";
 import * as wledCommands from "../api/wledCommands";
 import { createBoard } from "../domain/wledBoard";
 
 export const useWLEDBoards = () => {
   const [state, dispatch] = useReducer(boardsReducer, initialBoardsState);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load saved boards on mount
+  // Load boards from global manager on mount and subscribe to changes
   useEffect(() => {
-    const savedBoards = loadJSON<WLEDBoard[]>(LOCAL_STORAGE_KEYS.boards, []);
-    const boards = savedBoards.map((b) => ({
-      ...b,
-      lastSeen: new Date(b.lastSeen),
-      isOnline: false, // Assume offline until first refresh
-    }));
-    dispatch({ type: "LOAD_BOARDS", payload: boards });
+    console.log("[useWLEDBoards] Initializing...");
+
+    // Load initial data from global manager
+    const initialBoards = globalBoardsManager.loadBoards();
+    console.log("[useWLEDBoards] Loaded initial boards:", initialBoards);
+    dispatch({ type: "LOAD_BOARDS", payload: initialBoards });
+    setIsInitialized(true);
+
+    // Subscribe to board changes from global manager
+    const unsubscribe = globalBoardsManager.subscribe((boards) => {
+      console.log("[useWLEDBoards] Received boards update:", boards);
+      dispatch({ type: "LOAD_BOARDS", payload: boards });
+    });
+
+    return unsubscribe;
   }, []);
 
-  // Persist boards to localStorage whenever they change
+  // Sync local state changes back to global manager (but only after initialization)
   useEffect(() => {
-    saveJSON(LOCAL_STORAGE_KEYS.boards, state.boards);
-  }, [state.boards]);
+    if (!isInitialized) {
+      console.log("[useWLEDBoards] Skipping global sync - not initialized yet");
+      return;
+    }
+
+    console.log("[useWLEDBoards] Syncing to global manager:", state.boards);
+    globalBoardsManager.updateBoards(state.boards);
+  }, [state.boards, isInitialized]);
 
   const discoverBoards = useCallback(
     async (
@@ -44,130 +57,283 @@ export const useWLEDBoards = () => {
     []
   );
 
+  const refreshBoard = useCallback(async (boardId: string) => {
+    const board = globalBoardsManager.findBoard(boardId);
+    if (!board) return;
+
+    console.log(`Refreshing board: ${board.name} (${board.ip})`);
+    const response = await wledCommands.getBoardFullState(board.ip);
+
+    console.log(`Full state response for ${board.name}:`, response);
+
+    if (response.ok && response.data) {
+      // The response.data should contain both state and info
+      const stateData = response.data.state || response.data; // Handle both formats
+      const infoData = response.data.info;
+
+      console.log(`State data:`, stateData);
+      console.log(`Info data:`, infoData);
+
+      globalBoardsManager.updateBoard(board.id, {
+        name: infoData?.name || board.name,
+        isOnline: true,
+        state: stateData,
+        info: infoData,
+        syncEmit: Boolean(stateData?.udpn?.send),
+        syncReceive: Boolean(stateData?.udpn?.receive),
+        lastSeen: new Date(),
+      });
+      console.log(
+        `Successfully refreshed board: ${infoData?.name || board.name}`
+      );
+    } else {
+      globalBoardsManager.updateBoard(board.id, {
+        isOnline: false,
+        lastSeen: new Date(),
+      });
+      console.log(`Failed to refresh board: ${board.name}`);
+    }
+  }, []);
+
   const refreshAllBoards = useCallback(async () => {
-    dispatch({ type: "SET_ALL_OFFLINE" });
+    const boards = globalBoardsManager.getBoards();
+    console.log(`Refreshing all ${boards.length} boards...`);
+
+    // Set all boards offline first
+    boards.forEach((board) => {
+      globalBoardsManager.updateBoard(board.id, { isOnline: false });
+    });
+
     await Promise.all(
-      state.boards.map(async (board) => {
-        const response = await wledCommands.getBoardState(board.ip);
-        dispatch({
-          type: "UPDATE_BOARD",
-          payload: {
-            id: board.id,
-            isOnline: response.ok,
-            state: response.data?.state,
-            info: response.data?.info,
-          },
-        });
+      boards.map(async (board) => {
+        const response = await wledCommands.getBoardFullState(board.ip);
+        if (response.ok && response.data) {
+          const stateData = response.data.state || response.data;
+          const infoData = response.data.info;
+
+          globalBoardsManager.updateBoard(board.id, {
+            name: infoData?.name || board.name,
+            isOnline: true,
+            state: stateData,
+            info: infoData,
+            syncEmit: Boolean(stateData?.udpn?.send),
+            syncReceive: Boolean(stateData?.udpn?.receive),
+            lastSeen: new Date(),
+          });
+        } else {
+          globalBoardsManager.updateBoard(board.id, {
+            isOnline: false,
+            lastSeen: new Date(),
+          });
+        }
       })
     );
-  }, [state.boards]);
+    console.log("Finished refreshing all boards");
+  }, []);
 
   const addBoard = useCallback(async (ip: string) => {
+    console.log(`Adding board for IP: ${ip}`);
     const response = await wledDiscovery.testWLEDBoard(ip);
+    console.log("testWLEDBoard response:", response);
+
     if (response.ok && response.data && response.data.info) {
+      const boardId = response.data.info.mac || ip;
+      console.log(
+        `Creating board with ID: ${boardId} (from mac: ${response.data.info.mac})`
+      );
+
       const newBoard = createBoard({
-        id: response.data.info.mac || ip,
+        id: boardId,
         name: response.data.info.name,
         ip: response.data.ip,
         state: response.data.state,
         info: response.data.info,
       });
-      dispatch({ type: "ADD_BOARD", payload: newBoard });
+      console.log("Created board:", newBoard);
+
+      // Add through global manager instead of dispatch
+      globalBoardsManager.addBoard(newBoard);
+      console.log("Board added through global manager");
       return newBoard;
     }
     return null;
   }, []);
 
   const removeBoard = useCallback((boardId: string) => {
-    dispatch({ type: "REMOVE_BOARD", payload: boardId });
+    globalBoardsManager.removeBoard(boardId);
   }, []);
 
-  const togglePower = useCallback(
-    async (boardId: string, on: boolean) => {
-      const board = state.boards.find((b) => b.id === boardId);
-      if (!board) return;
+  const togglePower = useCallback(async (boardId: string, on: boolean) => {
+    console.log(`\n=== TOGGLE POWER START ===`);
+    console.log(`Looking for board with ID: "${boardId}"`);
 
-      // Optimistic update
-      dispatch({
-        type: "UPDATE_BOARD",
-        payload: { id: boardId, state: { ...board.state, on } as any },
-      });
+    const board = globalBoardsManager.findBoard(boardId);
+    if (!board) {
+      console.error(`Board with ID "${boardId}" not found!`);
+      console.log(
+        "Available boards:",
+        globalBoardsManager.getBoards().map((b) => ({ id: b.id, name: b.name }))
+      );
+      return;
+    }
 
-      const response = await wledCommands.setPower(board.ip, on);
-      if (!response.ok) {
-        // Rollback on failure
-        dispatch({
-          type: "UPDATE_BOARD",
-          payload: { id: boardId, state: board.state },
+    console.log(
+      `Board ${board.name}: Current state.on = ${board.state?.on}, Toggling to = ${on}`
+    );
+
+    // TEMPORARILY DISABLE OPTIMISTIC UPDATE TO DEBUG
+    console.log(`Skipping optimistic update - sending command directly`);
+
+    const response = await wledCommands.setPower(board.ip, on);
+    if (!response.ok) {
+      console.error(
+        `Failed to toggle power for ${board.name}: ${response.error}`
+      );
+      // TODO: Show error toast
+    } else {
+      console.log(
+        `Successfully toggled power for ${board.name} to ${on ? "ON" : "OFF"}`
+      );
+      // Fetch actual state from device to confirm the change
+      const stateResponse = await wledCommands.getBoardFullState(board.ip);
+      console.log(`Power toggle state response:`, stateResponse);
+
+      if (stateResponse.ok && stateResponse.data) {
+        const stateData = stateResponse.data.state || stateResponse.data;
+        const infoData = stateResponse.data.info;
+
+        console.log(`Received state from device: on = ${stateData?.on}`);
+
+        // Update through global manager instead of dispatch
+        const success = globalBoardsManager.updateBoard(boardId, {
+          state: stateData,
+          info: infoData,
+          isOnline: true,
+          syncEmit: Boolean(stateData?.udpn?.send),
+          syncReceive: Boolean(stateData?.udpn?.receive),
+          lastSeen: new Date(),
         });
-        // TODO: Show error toast
+
+        if (success) {
+          console.log(
+            `Board ${board.name} updated successfully through global manager`
+          );
+        } else {
+          console.error(
+            `Failed to update board ${board.name} through global manager`
+          );
+        }
       }
-    },
-    [state.boards]
-  );
+    }
+    console.log(`=== TOGGLE POWER END ===\n`);
+  }, []);
 
-  const setBrightness = useCallback(
-    async (boardId: string, bri: number) => {
-      const board = state.boards.find((b) => b.id === boardId);
-      if (!board) return;
+  const setBrightness = useCallback(async (boardId: string, bri: number) => {
+    const board = globalBoardsManager.findBoard(boardId);
+    if (!board) return;
 
-      // Optimistic update
-      dispatch({
-        type: "UPDATE_BOARD",
-        payload: { id: boardId, state: { ...board.state, bri } as any },
+    // Store original state for rollback
+    const originalState = board.state;
+
+    // Optimistic update
+    globalBoardsManager.updateBoard(boardId, {
+      state: { ...board.state, bri } as any,
+    });
+
+    const response = await wledCommands.setBrightness(board.ip, bri);
+    if (!response.ok) {
+      // Rollback
+      globalBoardsManager.updateBoard(boardId, {
+        state: originalState,
       });
+    } else {
+      // Fetch actual state from device to confirm the change
+      const stateResponse = await wledCommands.getBoardFullState(board.ip);
+      if (stateResponse.ok && stateResponse.data) {
+        const stateData = stateResponse.data.state || stateResponse.data;
+        const infoData = stateResponse.data.info;
 
-      const response = await wledCommands.setBrightness(board.ip, bri);
-      if (!response.ok) {
-        // Rollback
-        dispatch({
-          type: "UPDATE_BOARD",
-          payload: { id: boardId, state: board.state },
+        globalBoardsManager.updateBoard(boardId, {
+          state: stateData,
+          info: infoData,
+          isOnline: true,
+          syncEmit: Boolean(stateData?.udpn?.send),
+          syncReceive: Boolean(stateData?.udpn?.receive),
         });
       }
-    },
-    [state.boards]
-  );
+    }
+  }, []);
 
   const setSync = useCallback(
-    async (boardId: string, sync: boolean, send: boolean) => {
-      const board = state.boards.find((b) => b.id === boardId);
+    async (boardId: string, receive: boolean, send: boolean) => {
+      const board = globalBoardsManager.findBoard(boardId);
       if (!board) return;
 
+      // Store original sync state for rollback
+      const originalSyncEmit = board.syncEmit;
+      const originalSyncReceive = board.syncReceive;
+
       // Optimistic update
-      dispatch({
-        type: "UPDATE_BOARD",
-        payload: { id: boardId, syncEmit: send, syncReceive: sync },
+      globalBoardsManager.updateBoard(boardId, {
+        syncEmit: send,
+        syncReceive: receive,
       });
 
-      const response = await wledCommands.setSync(board.ip, sync, send);
+      const response = await wledCommands.setSync(board.ip, receive, send);
       if (!response.ok) {
         // Rollback
-        dispatch({
-          type: "UPDATE_BOARD",
-          payload: {
-            id: boardId,
-            syncEmit: board.syncEmit,
-            syncReceive: board.syncReceive,
-          },
+        globalBoardsManager.updateBoard(boardId, {
+          syncEmit: originalSyncEmit,
+          syncReceive: originalSyncReceive,
         });
+      } else {
+        // Fetch actual state from device to confirm the change
+        const stateResponse = await wledCommands.getBoardFullState(board.ip);
+        if (stateResponse.ok && stateResponse.data) {
+          const stateData = stateResponse.data.state || stateResponse.data;
+          const infoData = stateResponse.data.info;
+
+          globalBoardsManager.updateBoard(boardId, {
+            state: stateData,
+            info: infoData,
+            isOnline: true,
+            syncEmit: Boolean(stateData?.udpn?.send),
+            syncReceive: Boolean(stateData?.udpn?.receive),
+          });
+        }
       }
     },
-    [state.boards]
+    []
   );
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 30 seconds - TEMPORARILY DISABLED FOR DEBUGGING
   useEffect(() => {
-    if (state.boards.length === 0) return;
-    const intervalId = setInterval(refreshAllBoards, REFRESH_INTERVAL_MS);
-    return () => clearInterval(intervalId);
-  }, [state.boards.length, refreshAllBoards]);
+    // Disabled to debug manual refresh issues
+    console.log("Auto-refresh is temporarily disabled for debugging");
+    return;
+
+    // Commented out for now
+    // const boards = globalBoardsManager.getBoards();
+    // if (boards.length === 0) return;
+
+    // console.log(`Setting up auto-refresh for ${boards.length} boards`);
+    // const intervalId = setInterval(() => {
+    //   console.log('Auto-refresh triggered');
+    //   refreshAllBoards();
+    // }, REFRESH_INTERVAL_MS);
+
+    // return () => {
+    //   console.log('Clearing auto-refresh interval');
+    //   clearInterval(intervalId);
+    // };
+  }, []); // No dependencies for now
 
   return {
     boards: state.boards,
     lastUpdated: state.lastUpdated,
     discoverBoards,
     refreshAllBoards,
+    refreshBoard,
     addBoard,
     removeBoard,
     togglePower,

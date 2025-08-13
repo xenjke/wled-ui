@@ -60,14 +60,30 @@ export function boardsReducer(
       };
 
     case "UPDATE_BOARD":
+      console.log(`Reducer UPDATE_BOARD:`, action.payload);
+      console.log(
+        `Current board state before update:`,
+        state.boards.find((b) => b.id === action.payload.id)?.state
+      );
+      console.log(`New state being applied:`, action.payload.state);
       return {
         ...state,
         boards: state.boards
-          .map((b) =>
-            b.id === action.payload.id
-              ? { ...b, ...action.payload, lastSeen: new Date() }
-              : b
-          )
+          .map((b) => {
+            if (b.id === action.payload.id) {
+              const updated = {
+                ...b,
+                ...action.payload,
+                lastSeen: action.payload.lastSeen || new Date(),
+              };
+              console.log(
+                `Updated board ${b.name} - Final state.on:`,
+                updated.state?.on
+              );
+              return updated;
+            }
+            return b;
+          })
           .sort(sortBoards),
         lastUpdated: Date.now(),
       };
